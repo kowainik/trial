@@ -7,8 +7,9 @@ module Test.Trial.Gen
     , genFunction2
     ) where
 
+import Control.Applicative (liftA2)
 import Hedgehog (Gen)
-import Trial (Trial (..))
+import Trial (Fatality (..), Trial (..))
 
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -29,9 +30,12 @@ genSmallInt = Gen.int (Range.linear 1 6)
 -- | Generate a 'Validation'.
 genTrial :: Gen a -> Gen (Trial Int a)
 genTrial genA = Gen.choice
-    [ Fiasco <$> genSmallList genInt
+    [ Fiasco <$> genSmallList (liftA2 (,) genFatality genInt)
     , Result <$> genSmallList genInt <*> genA
     ]
+
+genFatality :: Gen Fatality
+genFatality = Gen.enumBounded
 
 -- | Generate a simple unary function from the list.
 genFunction :: Gen (Int -> Int)
