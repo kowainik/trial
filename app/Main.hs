@@ -29,7 +29,7 @@ data Options = Options
 data PartialOptions = PartialOptions
     { poRetryCount    :: !(Trial Text (Text, Int))
     , poHost          :: !(Trial Text (Text, Text))
-    , poCharacterCode :: !(Trial Text (Text, (Maybe Bool)))
+    , poCharacterCode :: !(Trial Text (Text, Maybe Bool))
     } deriving stock (Show, Eq)
 
 instance Semigroup PartialOptions where
@@ -56,7 +56,7 @@ defaultPartialOptions = PartialOptions
 mToTrial :: Text -> Text -> Maybe a -> Trial Text (Text, a)
 mToTrial from field = withTag from . maybeToTrial ("No " <> from <> " option specified for " <> field)
 
-trialOption :: Text -> (ReadM a) -> Parser (Trial Text (Text, a))
+trialOption :: Text -> ReadM a -> Parser (Trial Text (Text, a))
 trialOption field opt = mToTrial "CLI" field <$>
     optional (option opt (long $ T.unpack field))
 
@@ -74,7 +74,7 @@ partialOptionsCodec = PartialOptions
     <*> trialCodec "host"        Toml.text .= poHost
     <*> trialMaybeCodec "character-code"   .= poCharacterCode
   where
-    trialMaybeCodec :: Key -> TomlCodec (Trial Text (Text, (Maybe Bool)))
+    trialMaybeCodec :: Key -> TomlCodec (Trial Text (Text, Maybe Bool))
     trialMaybeCodec key = Toml.dimap f (withTag "TOML" . pure) $
         Toml.dioptional (Toml.bool key)
 
