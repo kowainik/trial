@@ -13,6 +13,7 @@ Trial Data Type
 
 module Trial
        ( Trial (..)
+       , TaggedTrial
        , Fatality (..)
 
          -- * 'Maybe' combinators
@@ -51,6 +52,8 @@ data Trial e a
     = Fiasco [(Fatality, e)]
     | Result [e] a
     deriving stock (Show, Eq)
+
+type TaggedTrial tag a = Trial tag (tag, a)
 
 instance Semigroup (Trial e a) where
     Fiasco e1   <> Fiasco e2   = Fiasco $ e1 <> e2
@@ -114,10 +117,10 @@ trialToEither :: Monoid e => Trial e a -> Either e a
 trialToEither (Result _ a) = Right a
 trialToEither (Fiasco es)  = Left $ mconcat $ map snd es
 
-withTag :: tag -> Trial e a -> Trial e (tag, a)
+withTag :: tag -> Trial tag a -> TaggedTrial tag a
 withTag tag = fmap (tag,)
 
-unTag :: Trial tag (tag, a) -> Trial tag a
+unTag :: TaggedTrial tag a -> Trial tag a
 unTag (Fiasco e)          = Fiasco e
 unTag (Result e (tag, a)) = Result (tag:e) a
 
