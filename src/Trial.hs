@@ -1,3 +1,8 @@
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances  #-}
+
 {- |
 Copyright: (c) 2020 Kowainik
 SPDX-License-Identifier: MPL-2.0
@@ -16,12 +21,21 @@ module Trial
          -- * 'Either' combinators
        , eitherToTrial
        , trialToEither
+
+         -- * Tag
+       , withTag
+       , unTag
        ) where
 
 import Control.Applicative (Alternative (..))
 import Data.Bifoldable (Bifoldable (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.Bitraversable (Bitraversable (..))
+import Data.Proxy (Proxy (..))
+import Data.String (IsString (..))
+import GHC.OverloadedLabels (IsLabel (..))
+import GHC.Records (HasField (..))
+import GHC.TypeLits (KnownSymbol, symbolVal)
 
 
 data Fatality
@@ -32,12 +46,6 @@ data Fatality
 instance Semigroup Fatality where
     E <> _ = E
     W <> x = x
-
-fatalityE :: [(Fatality, e)] -> [(Fatality, e)]
-fatalityE = map (first (const E))
-
-fatalityW :: [(Fatality, e)] -> [(Fatality, e)]
-fatalityW = map (first (const W))
 
 data Trial e a
     = Fiasco [(Fatality, e)]
@@ -105,3 +113,24 @@ eitherToTrial (Left e)  = Fiasco [(E, e)]
 trialToEither :: Monoid e => Trial e a -> Either e a
 trialToEither (Result _ a) = Right a
 trialToEither (Fiasco es)  = Left $ mconcat $ map snd es
+
+withTag :: tag -> Trial e a -> Trial e (tag, a)
+withTag tag = fmap (tag,)
+
+unTag :: Trial tag (tag, a) -> Trial tag a
+unTag (Fiasco e)          = Fiasco e
+unTag (Result e (tag, a)) = Result (tag:e) a
+
+instance
+       ( HasField label r (Trial tag (tag, a))
+       , IsString tag
+       , Semigroup tag
+       , KnownSymbol label
+       )
+    => IsLabel label (r -> Trial tag a)
+  where
+    fromLabel :: r -> Trial tag a
+    fromLabel r = let fieldName = fromString $ symbolVal (Proxy @label) <> " is set through the source: " in
+        case getField @label r of
+            Fiasco e          -> Fiasco e
+            Result e (tag, a) -> Result (fieldName <> tag : e) a
