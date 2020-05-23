@@ -14,6 +14,11 @@ module Trial
        , trialToMaybe
        ) where
 
+import Control.Applicative (Alternative (..))
+import Data.Bifoldable (Bifoldable (..))
+import Data.Bifunctor (Bifunctor (..))
+import Data.Bitraversable (Bitraversable (..))
+
 
 data Trial e a
     = Fiasco [e]
@@ -21,8 +26,8 @@ data Trial e a
     deriving stock (Show, Eq)
 
 instance Semigroup (Trial e a) where
-    Fiasco e1 <> Fiasco e2     = Fiasco $ e1 <> e2
-    Fiasco e1 <> Result e2 a   = Result (e1 <> e2) a
+    Fiasco e1   <> Fiasco e2   = Fiasco $ e1 <> e2
+    Fiasco e1   <> Result e2 a = Result (e1 <> e2) a
     Result e1 a <> Fiasco e2   = Result (e1 <> e2) a
     Result e1 _ <> Result e2 b = Result (e1 <> e2) b
 
@@ -40,6 +45,30 @@ instance Applicative (Trial e) where
     Fiasco e1 <*> Result e2 _ = Fiasco $ e1 <> e2
     Result e1 _ <*> Fiasco e2 = Fiasco $ e1 <> e2
     Result e1 f <*> Result e2 a = Result (e1 <> e2) $ f a
+
+instance Alternative (Trial e) where
+    empty :: Trial e a
+    empty = Fiasco []
+
+    (<|>) :: Trial e a -> Trial e a -> Trial e a
+    r@Result{} <|> _ = r
+    _ <|> r@Result{} = r
+    (Fiasco e1) <|> (Fiasco e2) = Fiasco $ e1 <> e2
+
+instance Bifunctor Trial where
+    bimap :: (e1 -> e2) -> (a -> b) -> Trial e1 a -> Trial e2 b
+    bimap ef _ (Fiasco es)   = Fiasco $ map ef es
+    bimap ef af (Result e a) = Result (map ef e) (af a)
+
+instance Bifoldable Trial where
+    bifoldMap :: (Monoid m) => (e -> m) -> (a -> m) -> Trial e a -> m
+    bifoldMap ef _ (Fiasco es)    = foldMap ef es
+    bifoldMap ef ea (Result es a) = foldMap ef es <> ea a
+
+instance Bitraversable Trial where
+    bitraverse :: (Applicative f) => (e1 -> f e2) -> (a -> f b) -> Trial e1 a -> f (Trial e2 b)
+    bitraverse ef _ (Fiasco es)    = Fiasco <$> traverse ef es
+    bitraverse ef ea (Result es a) = Result <$> traverse ef es <*> ea a
 
 maybeToTrial :: e -> Maybe a -> Trial e a
 maybeToTrial e = \case
