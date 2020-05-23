@@ -1,4 +1,5 @@
-{-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE ApplicativeDo    #-}
+{-# LANGUAGE OverloadedLabels #-}
 
 module Main (main) where
 
@@ -6,7 +7,7 @@ import Data.Text (Text)
 import Options.Applicative (Parser, ReadM, auto, execParser, info, long, option, optional, str)
 import Toml (Key, TomlCodec, (.=))
 
-import Trial (Fatality (..), Trial (..), maybeToTrial, trialToMaybe)
+import Trial (Fatality (..), Trial (..), maybeToTrial, trialToMaybe, withTag)
 
 import qualified Data.Text as T
 import qualified Toml
@@ -26,9 +27,9 @@ data Options = Options
     } deriving stock (Show, Eq)
 
 data PartialOptions = PartialOptions
-    { poRetryCount    :: !(Trial Text Int)
-    , poHost          :: !(Trial Text Text)
-    , poCharacterCode :: !(Trial Text (Maybe Bool))
+    { poRetryCount    :: !(Trial Text (Text, Int))
+    , poHost          :: !(Trial Text (Text, Text))
+    , poCharacterCode :: !(Trial Text (Text, (Maybe Bool)))
     } deriving stock (Show, Eq)
 
 instance Semigroup PartialOptions where
@@ -39,23 +40,23 @@ instance Semigroup PartialOptions where
         }
 
 makeOptions :: PartialOptions -> Trial Text Options
-makeOptions PartialOptions {..} = do
-    oRetryCount    <- poRetryCount
-    oHost          <- poHost
-    oCharacterCode <- poCharacterCode
+makeOptions opts = do
+    oRetryCount    <- #poRetryCount opts
+    oHost          <- #poHost opts
+    oCharacterCode <- #poCharacterCode opts
     pure Options {..}
 
 defaultPartialOptions :: PartialOptions
 defaultPartialOptions = PartialOptions
-    { poRetryCount    = pure 5
-    , poHost          = Fiasco [(E, "No default value for Host")]
-    , poCharacterCode = Fiasco []
+    { poRetryCount    = withTag "Default" $ pure 5
+    , poHost          = withTag "Default" $ Fiasco [(E, "No default value for Host")]
+    , poCharacterCode = withTag "Default" $ Fiasco []
     }
 
-mToTrial :: Text -> Text -> Maybe a -> Trial Text a
-mToTrial from field = maybeToTrial ("No " <> from <> " option specified for " <> field)
+mToTrial :: Text -> Text -> Maybe a -> Trial Text (Text, a)
+mToTrial from field = withTag from . maybeToTrial ("No " <> from <> " option specified for " <> field)
 
-trialOption :: Text -> (ReadM a) -> Parser (Trial Text a)
+trialOption :: Text -> (ReadM a) -> Parser (Trial Text (Text, a))
 trialOption field opt = mToTrial "CLI" field <$>
     optional (option opt (long $ T.unpack field))
 
@@ -73,17 +74,17 @@ partialOptionsCodec = PartialOptions
     <*> trialCodec "host"        Toml.text .= poHost
     <*> trialMaybeCodec "character-code"   .= poCharacterCode
   where
-    trialMaybeCodec :: Key -> TomlCodec (Trial Text (Maybe Bool))
-    trialMaybeCodec key = Toml.dimap f pure $
+    trialMaybeCodec :: Key -> TomlCodec (Trial Text (Text, (Maybe Bool)))
+    trialMaybeCodec key = Toml.dimap f (withTag "TOML" . pure) $
         Toml.dioptional (Toml.bool key)
 
-    f :: Trial Text (Maybe a) -> Maybe a
+    f :: Trial Text (Text, Maybe a) -> Maybe a
     f = \case
-        Result _ a -> a
+        Result _ a -> snd a
         Fiasco _ -> Nothing
 
-trialCodec :: Key -> (Key -> TomlCodec a) -> TomlCodec (Trial Text a)
-trialCodec key codecA = Toml.dimap trialToMaybe (mToTrial "TOML" $ Toml.prettyKey key) $
+trialCodec :: Key -> (Key -> TomlCodec a) -> TomlCodec (Trial Text (Text, a))
+trialCodec key codecA = Toml.dimap (fmap snd . trialToMaybe) (mToTrial "TOML" $ Toml.prettyKey key) $
     Toml.dioptional (codecA key)
 
 
@@ -96,7 +97,8 @@ parseOptions = do
                 PartialOptions e e e
             Right a -> a
 
-    let combinedOptions =  defaultPartialOptions
-                        <> cmdLineOptions
-                        <> tomlOptions
+    let combinedOptions =
+               defaultPartialOptions
+            <> cmdLineOptions
+            <> tomlOptions
     pure $ makeOptions combinedOptions
