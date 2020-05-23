@@ -1,5 +1,9 @@
 module Main (main) where
 
+import Test.Hspec (describe, hspec)
+
+import Test.Trial.Laws (lawsSpec)
+
 
 main :: IO ()
-main = putStrLn ("Test suite is not implemented" :: String)
+main = hspec $ describe "Trial Test" lawsSpec
