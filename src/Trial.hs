@@ -28,11 +28,14 @@ module Trial
        , unTag
        ) where
 
-import Control.Applicative (Alternative (..))
+import Control.Applicative (Alternative (..), Applicative (..))
 import Data.Bifoldable (Bifoldable (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.Bitraversable (Bitraversable (..))
+import Data.Foldable (foldl')
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
+import Data.Semigroup (Semigroup (..))
 import Data.String (IsString (..))
 import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
@@ -44,9 +47,8 @@ data Fatality
     | E
     deriving stock (Show, Eq, Enum, Bounded)
 
-instance Semigroup Fatality where
-    E <> _ = E
-    W <> x = x
+withW :: [e] -> [(Fatality, e)]
+withW = map (W,)
 
 data Trial e a
     = Fiasco [(Fatality, e)]
@@ -60,45 +62,84 @@ instance Semigroup (Trial e a) where
     Fiasco e1   <> Result e2 a = Result (map snd e1 <> e2) a
     Result e1 a <> Fiasco e2   = Result (e1 <> map snd e2) a
     Result e1 _ <> Result e2 b = Result (e1 <> e2) b
+    {-# INLINE (<>) #-}
+
+    sconcat :: NonEmpty (Trial e a) -> Trial e a
+    sconcat (x :| xs) = foldl' (<>) x xs
+    {-# INLINE sconcat #-}
 
 instance Functor (Trial e) where
     fmap :: (a -> b) -> Trial e a -> Trial e b
     fmap _ (Fiasco e)   = Fiasco e
     fmap f (Result e a) = Result e $ f a
+    {-# INLINE fmap #-}
+
+    (<$) :: a -> Trial e b -> Trial e a
+    _ <$ Fiasco e   = Fiasco e
+    a <$ Result e _ = Result e a
+    {-# INLINE (<$) #-}
 
 instance Applicative (Trial e) where
     pure :: a -> Trial e a
     pure = Result []
+    {-# INLINE pure #-}
 
     (<*>) :: Trial e (a -> b) -> Trial e a -> Trial e b
-    Fiasco e1 <*> Fiasco e2   = Fiasco $ e1 <> e2
-    Fiasco e1 <*> Result e2 _ = Fiasco $ e1 <> map (W,) e2
-    Result e1 _ <*> Fiasco e2 = Fiasco $ map (W,) e1 <> e2
-    Result e1 f <*> Result e2 a = Result (e1 <> e2) $ f a
+    Fiasco e1   <*> Fiasco e2   = Fiasco (e1 <> e2)
+    Fiasco e1   <*> Result e2 _ = Fiasco (e1 <> withW e2)
+    Result e1 _ <*> Fiasco e2   = Fiasco (withW e1 <> e2)
+    Result e1 f <*> Result e2 a = Result (e1 <> e2) (f a)
+    {-# INLINE (<*>) #-}
+
+    (*>) :: Trial e a -> Trial e b -> Trial e b
+    Fiasco e1   *> Fiasco e2   = Fiasco (e1 <> e2)
+    Fiasco e1   *> Result e2 _ = Fiasco (e1 <> withW e2)
+    Result e1 _ *> Fiasco e2   = Fiasco (withW e1 <> e2)
+    Result e1 _ *> Result e2 b = Result (e1 <> e2) b
+    {-# INLINE (*>) #-}
+
+    (<*) :: Trial e a -> Trial e b -> Trial e a
+    Fiasco e1   <* Fiasco e2   = Fiasco (e1 <> e2)
+    Fiasco e1   <* Result e2 _ = Fiasco (e1 <> withW e2)
+    Result e1 _ <* Fiasco e2   = Fiasco (withW e1 <> e2)
+    Result e1 a <* Result e2 _ = Result (e1 <> e2) a
+    {-# INLINE (<*) #-}
+
+    liftA2 :: (a -> b -> c) -> Trial e a -> Trial e b -> Trial e c
+    liftA2 _ (Fiasco e1)   (Fiasco e2)   = Fiasco (e1 <> e2)
+    liftA2 _ (Fiasco e1)   (Result e2 _) = Fiasco (e1 <> withW e2)
+    liftA2 _ (Result e1 _) (Fiasco e2)   = Fiasco (withW e1 <> e2)
+    liftA2 f (Result e1 a) (Result e2 b) = Result (e1 <> e2) (f a b)
+    {-# INLINE liftA2 #-}
 
 instance Alternative (Trial e) where
     empty :: Trial e a
     empty = Fiasco []
+    {-# INLINE empty #-}
 
     (<|>) :: Trial e a -> Trial e a -> Trial e a
     r@Result{} <|> _ = r
     _ <|> r@Result{} = r
     (Fiasco e1) <|> (Fiasco e2) = Fiasco $ e1 <> e2
+    {-# INLINE (<|>) #-}
 
 instance Bifunctor Trial where
     bimap :: (e1 -> e2) -> (a -> b) -> Trial e1 a -> Trial e2 b
     bimap ef _ (Fiasco es)   = Fiasco $ map (second ef) es
     bimap ef af (Result e a) = Result (map ef e) (af a)
+    {-# INLINE bimap #-}
 
 instance Bifoldable Trial where
     bifoldMap :: (Monoid m) => (e -> m) -> (a -> m) -> Trial e a -> m
     bifoldMap ef _ (Fiasco es)    = foldMap (ef . snd) es
     bifoldMap ef ea (Result es a) = foldMap ef es <> ea a
+    {-# INLINE bifoldMap #-}
 
 instance Bitraversable Trial where
     bitraverse :: (Applicative f) => (e1 -> f e2) -> (a -> f b) -> Trial e1 a -> f (Trial e2 b)
     bitraverse ef _ (Fiasco es)    = Fiasco <$> traverse (traverse ef) es
     bitraverse ef ea (Result es a) = Result <$> traverse ef es <*> ea a
+    {-# INLINE bitraverse #-}
 
 maybeToTrial :: e -> Maybe a -> Trial e a
 maybeToTrial e = \case
@@ -137,3 +178,4 @@ instance
         case getField @label r of
             Fiasco e          -> Fiasco e
             Result e (tag, a) -> Result (fieldName <> tag : e) a
+    {-# INLINE fromLabel #-}
