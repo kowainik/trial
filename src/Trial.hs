@@ -58,6 +58,7 @@ data Trial e a
 type TaggedTrial tag a = Trial tag (tag, a)
 
 instance Semigroup (Trial e a) where
+    (<>) :: Trial e a -> Trial e a -> Trial e a
     Fiasco e1   <> Fiasco e2   = Fiasco $ e1 <> e2
     Fiasco e1   <> Result e2 a = Result (map snd e1 <> e2) a
     Result e1 a <> Fiasco e2   = Result (e1 <> map snd e2) a
@@ -85,7 +86,7 @@ instance Applicative (Trial e) where
     {-# INLINE pure #-}
 
     (<*>) :: Trial e (a -> b) -> Trial e a -> Trial e b
-    Fiasco e1   <*> trial   = Fiasco $ case trial of
+    Fiasco e1 <*> trial = Fiasco $ case trial of
         Fiasco e2   -> e1 <> e2
         Result e2 _ -> e1 <> withW e2
     Result e1 _ <*> Fiasco e2   = Fiasco (withW e1 <> e2)
@@ -93,22 +94,25 @@ instance Applicative (Trial e) where
     {-# INLINE (<*>) #-}
 
     (*>) :: Trial e a -> Trial e b -> Trial e b
-    Fiasco e1   *> Fiasco e2   = Fiasco (e1 <> e2)
-    Fiasco e1   *> Result e2 _ = Fiasco (e1 <> withW e2)
+    Fiasco e1 *> trial = Fiasco $ case trial of
+        Fiasco e2   -> e1 <> e2
+        Result e2 _ -> e1 <> withW e2
     Result e1 _ *> Fiasco e2   = Fiasco (withW e1 <> e2)
     Result e1 _ *> Result e2 b = Result (e1 <> e2) b
     {-# INLINE (*>) #-}
 
     (<*) :: Trial e a -> Trial e b -> Trial e a
-    Fiasco e1   <* Fiasco e2   = Fiasco (e1 <> e2)
-    Fiasco e1   <* Result e2 _ = Fiasco (e1 <> withW e2)
+    Fiasco e1 <* trial = Fiasco $ case trial of
+        Fiasco e2   -> e1 <> e2
+        Result e2 _ -> e1 <> withW e2
     Result e1 _ <* Fiasco e2   = Fiasco (withW e1 <> e2)
     Result e1 a <* Result e2 _ = Result (e1 <> e2) a
     {-# INLINE (<*) #-}
 
     liftA2 :: (a -> b -> c) -> Trial e a -> Trial e b -> Trial e c
-    liftA2 _ (Fiasco e1)   (Fiasco e2)   = Fiasco (e1 <> e2)
-    liftA2 _ (Fiasco e1)   (Result e2 _) = Fiasco (e1 <> withW e2)
+    liftA2 _ (Fiasco e1) trial = Fiasco $ case trial of
+        Fiasco e2   -> e1 <> e2
+        Result e2 _ -> e1 <> withW e2
     liftA2 _ (Result e1 _) (Fiasco e2)   = Fiasco (withW e1 <> e2)
     liftA2 f (Result e1 a) (Result e2 b) = Result (e1 <> e2) (f a b)
     {-# INLINE liftA2 #-}
