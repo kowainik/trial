@@ -8,9 +8,11 @@ module Test.Trial.Gen
     ) where
 
 import Control.Applicative (liftA2)
+import Data.DList (DList)
 import Hedgehog (Gen)
 import Trial (Fatality (..), Trial (..))
 
+import qualified Data.DList as DL
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
@@ -23,6 +25,11 @@ genInt = Gen.enumBounded
 genSmallList :: Gen a -> Gen [a]
 genSmallList = Gen.list (Range.linear 0 6)
 
+
+-- | Generate a small list of the given generated elements.
+genSmallDList :: Gen a -> Gen (DList a)
+genSmallDList = fmap DL.fromList . genSmallList
+
 -- | Generate a positive 'Int' within the range of @1-6@.
 genSmallInt :: Gen Int
 genSmallInt = Gen.int (Range.linear 1 6)
@@ -30,8 +37,8 @@ genSmallInt = Gen.int (Range.linear 1 6)
 -- | Generate a 'Validation'.
 genTrial :: Gen a -> Gen (Trial Int a)
 genTrial genA = Gen.choice
-    [ Fiasco <$> genSmallList (liftA2 (,) genFatality genInt)
-    , Result <$> genSmallList genInt <*> genA
+    [ Fiasco <$> genSmallDList (liftA2 (,) genFatality genInt)
+    , Result <$> genSmallDList genInt <*> genA
     ]
 
 genFatality :: Gen Fatality
