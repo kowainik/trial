@@ -10,9 +10,12 @@ module Trial
        ( Trial (..)
        , Fatality (..)
 
-         -- * 'Maybe'
+         -- * 'Maybe' combinators
        , maybeToTrial
        , trialToMaybe
+         -- * 'Either' combinators
+       , eitherToTrial
+       , trialToEither
        ) where
 
 import Control.Applicative (Alternative (..))
@@ -94,3 +97,11 @@ maybeToTrial e = \case
 trialToMaybe :: Trial e a -> Maybe a
 trialToMaybe (Result _ a) = Just a
 trialToMaybe (Fiasco _)   = Nothing
+
+eitherToTrial :: Either e a -> Trial e a
+eitherToTrial (Right a) = Result [] a
+eitherToTrial (Left e)  = Fiasco [(E, e)]
+
+trialToEither :: Monoid e => Trial e a -> Either e a
+trialToEither (Result _ a) = Right a
+trialToEither (Fiasco es)  = Left $ mconcat $ map snd es
