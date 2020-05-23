@@ -58,6 +58,7 @@ common common-options
 library
   import:              common-options
   hs-source-dirs:      src
+  build-depends:       dlist ^>= 0.8.0.8
   exposed-modules:     Trial
 
 executable trial
@@ -82,6 +83,7 @@ test-suite trial-test
                        Test.Trial.Laws
 
   build-depends:       trial
+                     , dlist
                      , hedgehog ^>= 1.0
                      , hspec ^>= 2.7
                      , hspec-hedgehog ^>= 0.0.1.1

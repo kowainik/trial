@@ -32,6 +32,7 @@ import Control.Applicative (Alternative (..), Applicative (..))
 import Data.Bifoldable (Bifoldable (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.Bitraversable (Bitraversable (..))
+import Data.DList (DList)
 import Data.Foldable (foldl')
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
@@ -41,18 +42,20 @@ import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import GHC.TypeLits (KnownSymbol, symbolVal)
 
+import qualified Data.DList as DL
+
 
 data Fatality
     = W
     | E
     deriving stock (Show, Eq, Enum, Bounded)
 
-withW :: [e] -> [(Fatality, e)]
-withW = map (W,)
+withW :: Functor f => f e -> f (Fatality, e)
+withW = fmap (W,)
 
 data Trial e a
-    = Fiasco [(Fatality, e)]
-    | Result [e] a
+    = Fiasco (DList (Fatality, e))
+    | Result (DList e) a
     deriving stock (Show, Eq)
 
 type TaggedTrial tag a = Trial tag (tag, a)
@@ -60,8 +63,8 @@ type TaggedTrial tag a = Trial tag (tag, a)
 instance Semigroup (Trial e a) where
     (<>) :: Trial e a -> Trial e a -> Trial e a
     Fiasco e1   <> Fiasco e2   = Fiasco $ e1 <> e2
-    Fiasco e1   <> Result e2 a = Result (map snd e1 <> e2) a
-    Result e1 a <> Fiasco e2   = Result (e1 <> map snd e2) a
+    Fiasco e1   <> Result e2 a = Result (DL.map snd e1 <> e2) a
+    Result e1 a <> Fiasco e2   = Result (e1 <> DL.map snd e2) a
     Result e1 _ <> Result e2 b = Result (e1 <> e2) b
     {-# INLINE (<>) #-}
 
@@ -82,7 +85,7 @@ instance Functor (Trial e) where
 
 instance Applicative (Trial e) where
     pure :: a -> Trial e a
-    pure = Result []
+    pure = Result DL.empty
     {-# INLINE pure #-}
 
     (<*>) :: Trial e (a -> b) -> Trial e a -> Trial e b
@@ -119,19 +122,19 @@ instance Applicative (Trial e) where
 
 instance Alternative (Trial e) where
     empty :: Trial e a
-    empty = Fiasco []
+    empty = Fiasco DL.empty
     {-# INLINE empty #-}
 
     (<|>) :: Trial e a -> Trial e a -> Trial e a
     r@Result{} <|> _ = r
     _ <|> r@Result{} = r
-    (Fiasco e1) <|> (Fiasco e2) = Fiasco $ e1 <> e2
+    (Fiasco e1) <|> (Fiasco e2) = Fiasco (e1 <> e2)
     {-# INLINE (<|>) #-}
 
 instance Bifunctor Trial where
     bimap :: (e1 -> e2) -> (a -> b) -> Trial e1 a -> Trial e2 b
-    bimap ef _ (Fiasco es)   = Fiasco $ map (second ef) es
-    bimap ef af (Result e a) = Result (map ef e) (af a)
+    bimap ef _ (Fiasco es)   = Fiasco (DL.map (second ef) es)
+    bimap ef af (Result e a) = Result (DL.map ef e) (af a)
     {-# INLINE bimap #-}
 
 instance Bifoldable Trial where
@@ -142,33 +145,38 @@ instance Bifoldable Trial where
 
 instance Bitraversable Trial where
     bitraverse :: (Applicative f) => (e1 -> f e2) -> (a -> f b) -> Trial e1 a -> f (Trial e2 b)
-    bitraverse ef _ (Fiasco es)    = Fiasco <$> traverse (traverse ef) es
-    bitraverse ef ea (Result es a) = Result <$> traverse ef es <*> ea a
+    bitraverse ef _ (Fiasco es)    = Fiasco <$> traverseDList (traverse ef) es
+    bitraverse ef ea (Result es a) = Result <$> traverseDList ef es <*> ea a
     {-# INLINE bitraverse #-}
+
+{- 'DList' doesn't have a 'Traversable' instance -}
+traverseDList :: (Applicative f) => (a -> f b) -> DList a -> f (DList b)
+traverseDList f = fmap DL.fromList . traverse f . DL.toList
+{-# INLINE traverseDList #-}
 
 maybeToTrial :: e -> Maybe a -> Trial e a
 maybeToTrial e = \case
-    Just a -> pure a
-    Nothing -> Fiasco [(E, e)]
+    Just a  -> pure a
+    Nothing -> Fiasco (DL.singleton (E, e))
 
 trialToMaybe :: Trial e a -> Maybe a
 trialToMaybe (Result _ a) = Just a
 trialToMaybe (Fiasco _)   = Nothing
 
 eitherToTrial :: Either e a -> Trial e a
-eitherToTrial (Right a) = Result [] a
-eitherToTrial (Left e)  = Fiasco [(E, e)]
+eitherToTrial (Right a) = pure a
+eitherToTrial (Left e)  = Fiasco (DL.singleton (E, e))
 
 trialToEither :: Monoid e => Trial e a -> Either e a
 trialToEither (Result _ a) = Right a
-trialToEither (Fiasco es)  = Left $ mconcat $ map snd es
+trialToEither (Fiasco es)  = Left $ foldl' (<>) mempty $ DL.map snd es
 
 withTag :: tag -> Trial tag a -> TaggedTrial tag a
 withTag tag = fmap (tag,)
 
 unTag :: TaggedTrial tag a -> Trial tag a
 unTag (Fiasco e)          = Fiasco e
-unTag (Result e (tag, a)) = Result (tag:e) a
+unTag (Result e (tag, a)) = Result (DL.snoc e tag) a
 
 instance
        ( HasField label r (Trial tag (tag, a))
@@ -182,5 +190,5 @@ instance
     fromLabel r = let fieldName = fromString $ symbolVal (Proxy @label) <> " is set through the source: " in
         case getField @label r of
             Fiasco e          -> Fiasco e
-            Result e (tag, a) -> Result (fieldName <> tag : e) a
+            Result e (tag, a) -> Result (DL.snoc e $ fieldName <> tag) a
     {-# INLINE fromLabel #-}
