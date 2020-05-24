@@ -10,7 +10,7 @@ module Test.Trial.Gen
 import Control.Applicative (liftA2)
 import Data.DList (DList)
 import Hedgehog (Gen)
-import Trial (Fatality (..), Trial (..))
+import Trial (Fatality, Trial (..))
 
 import qualified Data.DList as DL
 import qualified Hedgehog.Gen as Gen
