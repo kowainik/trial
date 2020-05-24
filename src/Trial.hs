@@ -16,6 +16,11 @@ module Trial
        , TaggedTrial
        , Fatality (..)
 
+         -- * Smart constructors
+       , fiasco
+       , fiascos
+       , result
+
          -- * 'Maybe' combinators
        , maybeToTrial
        , trialToMaybe
@@ -154,10 +159,19 @@ traverseDList :: (Applicative f) => (a -> f b) -> DList a -> f (DList b)
 traverseDList f = fmap DL.fromList . traverse f . DL.toList
 {-# INLINE traverseDList #-}
 
+fiasco :: e -> Trial e a
+fiasco e = Fiasco $ DL.singleton (E, e)
+
+fiascos :: [e] -> Trial e a
+fiascos = Fiasco . DL.fromList . map (E,)
+
+result :: e -> a -> Trial e a
+result e = Result $ DL.singleton e
+
 maybeToTrial :: e -> Maybe a -> Trial e a
 maybeToTrial e = \case
     Just a  -> pure a
-    Nothing -> Fiasco (DL.singleton (E, e))
+    Nothing -> fiasco e
 
 trialToMaybe :: Trial e a -> Maybe a
 trialToMaybe (Result _ a) = Just a
@@ -165,7 +179,7 @@ trialToMaybe (Fiasco _)   = Nothing
 
 eitherToTrial :: Either e a -> Trial e a
 eitherToTrial (Right a) = pure a
-eitherToTrial (Left e)  = Fiasco (DL.singleton (E, e))
+eitherToTrial (Left e)  = fiasco e
 
 trialToEither :: Monoid e => Trial e a -> Either e a
 trialToEither (Result _ a) = Right a
