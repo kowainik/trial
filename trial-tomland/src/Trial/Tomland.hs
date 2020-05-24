@@ -47,7 +47,7 @@ taggedTrialCodec
     .  tag
     -> (Key -> TomlCodec a)
     -> Key
-    ->  TomlCodec (TaggedTrial tag a)
+    -> TomlCodec (TaggedTrial tag a)
 taggedTrialCodec tag codecA key =
     Toml.dimap (fmap snd . trialToMaybe) handleMaybe
     $ Toml.dioptional (codecA key)
