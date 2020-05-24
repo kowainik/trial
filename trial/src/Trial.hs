@@ -264,7 +264,7 @@ instance Bitraversable Trial where
 
 {- 'DList' doesn't have a 'Traversable' instance -}
 traverseDList :: (Applicative f) => (a -> f b) -> DList a -> f (DList b)
-traverseDList f = fmap DL.fromList . traverse f . DL.toList
+traverseDList f = foldr (\a fDlistB -> liftA2 DL.cons (f a) fDlistB) (pure DL.empty)
 {-# INLINE traverseDList #-}
 
 {- |
