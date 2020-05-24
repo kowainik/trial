@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
 {- |
@@ -12,9 +13,14 @@ Trial Data Type
 -}
 
 module Trial
-       ( Trial (..)
+       ( -- * Data structures
+         Trial (..)
        , TaggedTrial
-       , Fatality (..)
+         -- ** 'Fatality'
+       , Fatality
+       , pattern Warning
+       , pattern Error
+
 
          -- * Smart constructors
        , fiasco
@@ -54,6 +60,12 @@ data Fatality
     = W
     | E
     deriving stock (Show, Eq, Enum, Bounded)
+
+pattern Warning :: Fatality
+pattern Warning <- W
+
+pattern Error :: Fatality
+pattern Error <- E
 
 withW :: Functor f => f e -> f (Fatality, e)
 withW = fmap (W,)
