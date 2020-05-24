@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-16.04
     strategy:
       matrix:
-        cabal: ["2.4"]
+        cabal: ["3.2"]
         ghc:
           - "8.6.5"
           - "8.8.3"
@@ -31,12 +31,12 @@ jobs:
       name: Cache ~/.cabal/store
       with:
         path: ~/.cabal/store
-        key: ${{ runner.os }}-${{ matrix.ghc }}-cabal
+        key: ${{ runner.os }}-${{ matrix.ghc }}-${{ matrix.cabal }}
 
     - name: Build
       run: |
         cabal v2-update
-        cabal v2-build --enable-tests --enable-benchmarks
+        cabal v2-build --enable-tests --enable-benchmarks --write-ghc-environment-files=always
 
     - name: Test
       run: |
