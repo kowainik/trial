@@ -49,6 +49,11 @@ module Trial
          -- * Tag
        , withTag
        , unTag
+
+         -- * Pretty printing
+       , prettyPrintFatality
+       , prettyPrintTrial
+       , prettyPrintTaggedTrial
        ) where
 
 import Control.Applicative (Alternative (..), Applicative (..))
@@ -65,6 +70,8 @@ import GHC.OverloadedLabels (IsLabel (..))
 import GHC.Records (HasField (..))
 import GHC.TypeLits (KnownSymbol, symbolVal)
 
+import qualified Colourista as C
+import qualified Colourista.Short as C
 import qualified Data.DList as DL
 
 
@@ -516,3 +523,36 @@ anyWarnings = \case
 dlistToList :: DList a -> [a]
 dlistToList = DL.toList
 {-# INLINE dlistToList #-}
+
+prettyPrintFatality :: (Semigroup str, IsString str) => Fatality -> str
+prettyPrintFatality = \case
+    E -> C.formatWith [C.red]    "Error  "
+    W -> C.formatWith [C.yellow] "Warning"
+
+prettyPrintEntry :: (Semigroup e, IsString e) => (Fatality, e) -> e
+prettyPrintEntry (f, e) = "  * [" <> prettyPrintFatality f <> "] " <> e <> "\n"
+
+prettyPrintTrial
+    :: (Show a, Semigroup e, IsString e)
+    => Trial e a
+    -> e
+prettyPrintTrial = \case
+    Fiasco es -> C.formatWith [C.red, C.bold] "Fiasco:\n"
+        <> foldr (\e -> (<>) (prettyPrintEntry e)) "" es
+    Result es a -> C.formatWith [C.green, C.bold] "Result:\n  "
+        <> fromString (show a)
+        <> C.i "\nWith the following warnings:\n"
+        <> foldr (\e -> (<>) (prettyPrintEntry (W, e))) "" es
+
+prettyPrintTaggedTrial
+    :: (Show a, Semigroup e, IsString e)
+    => TaggedTrial e a
+    -> e
+prettyPrintTaggedTrial = \case
+    Fiasco es -> C.formatWith [C.red, C.bold] "Fiasco:\n"
+        <> foldr (\e -> (<>) (prettyPrintEntry e)) "" es
+    Result es (tag, a) -> C.formatWith [C.green, C.bold] "Result:\n"
+        <> C.formatWith [C.blue] ("  [" <> tag <> "]\n    ")
+        <> fromString (show a)
+        <> C.i "\nWith the following warnings:\n"
+        <> foldr (\e -> (<>) (prettyPrintEntry (W, e))) "" es
