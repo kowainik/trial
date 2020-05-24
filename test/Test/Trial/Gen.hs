@@ -1,21 +1,26 @@
 module Test.Trial.Gen
-    ( genFunction
+    ( Property
+    , genEither
+    , genFunction
+    , genFunction2
     , genInt
     , genSmallInt
     , genSmallList
     , genTrial
-    , genFunction2
     ) where
 
 import Control.Applicative (liftA2)
 import Data.DList (DList)
-import Hedgehog (Gen)
+import Hedgehog (Gen, PropertyT)
 import Trial (Fatality, Trial (..))
 
 import qualified Data.DList as DL
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
+
+-- | Helper alias for tests.
+type Property = PropertyT IO ()
 
 -- | Generate an 'Int'.
 genInt :: Gen Int
@@ -63,4 +68,11 @@ genFunction2 = Gen.element
     , (*)
     , (-)
     , subtract
+    ]
+
+-- | Generate 'Either' with more frequent 'Right's.
+genEither :: Gen e -> Gen a -> Gen (Either e a)
+genEither genE genA = Gen.sized $ \n -> Gen.frequency
+    [ (2, Left <$> genE)
+    , (1 + fromIntegral n, Right <$> genA)
     ]
