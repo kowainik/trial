@@ -91,6 +91,8 @@ pattern Warning <- W
 pattern Error :: Fatality
 pattern Error <- E
 
+{-# COMPLETE Warning, Error #-}
+
 withW :: Functor f => f e -> f (Fatality, e)
 withW = fmap (W,)
 
@@ -421,6 +423,7 @@ pattern FiascoL e <- Fiasco (DL.toList -> e)
 pattern ResultL :: [e] -> a -> Trial e a
 pattern ResultL e a <- Result (DL.toList -> e) a
 
+{-# COMPLETE FiascoL, ResultL #-}
 
 {- | Get the list of 'Warning's and 'Error's together with the 'Maybe' 'Result' is applicable.
 
