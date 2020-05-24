@@ -5,12 +5,12 @@ module Main (main) where
 
 import Control.Applicative (empty)
 import Data.Text (Text)
-import Options.Applicative (Parser, ReadM, auto, execParser, info, long, option, optional, str)
+import Options.Applicative (Parser, auto, execParser, info, str)
 import Toml (Key, TomlCodec, (.=))
 
 import Trial (TaggedTrial, Trial (..), fiasco, maybeToTrial, trialToMaybe, withTag)
+import Trial.OptparseApplicative (taggedTrialOption)
 
-import qualified Data.Text as T
 import qualified Toml
 
 
@@ -57,15 +57,11 @@ defaultPartialOptions = PartialOptions
 mToTrial :: Text -> Text -> Maybe a -> TaggedTrial Text a
 mToTrial from field = withTag from . maybeToTrial ("No " <> from <> " option specified for " <> field)
 
-trialOption :: Text -> ReadM a -> Parser (TaggedTrial Text a)
-trialOption field opt = mToTrial "CLI" field <$>
-    optional (option opt (long $ T.unpack field))
-
 partialOptionsParser :: Parser PartialOptions
 partialOptionsParser =  PartialOptions
-    <$> trialOption "retry-count" auto
-    <*> trialOption "host" str
-    <*> trialOption "character-code" auto
+    <$> taggedTrialOption "retry-count" auto
+    <*> taggedTrialOption "host" str
+    <*> taggedTrialOption "character-code" auto
 
 -- TOML
 
@@ -92,7 +88,7 @@ trialCodec key codecA = Toml.dimap (fmap snd . trialToMaybe) (mToTrial "TOML" $ 
 parseOptions :: IO (Trial Text Options)
 parseOptions = do
     cmdLineOptions <- execParser $ info partialOptionsParser mempty
-    toml <- Toml.decodeFileEither partialOptionsCodec "options.toml"
+    toml <- Toml.decodeFileEither partialOptionsCodec "trial-example/options.toml"
     let tomlOptions = case toml of
             Left errs -> let e = fiasco $ Toml.prettyTomlDecodeErrors errs in
                 PartialOptions e e e

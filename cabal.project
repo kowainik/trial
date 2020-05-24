@@ -1,2 +1,4 @@
 packages:
     trial
+    trial-example
+    trial-optparse-applicative
