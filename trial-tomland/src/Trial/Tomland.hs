@@ -9,6 +9,7 @@ Trial helpers for @tomland@.
 module Trial.Tomland
     ( trialCodec
     , trialStrCodec
+    , trialMaybeCodec
     , taggedTrialCodec
     , taggedTrialStrCodec
     , taggedTrialMaybeCodec
@@ -31,7 +32,6 @@ codec fails.
 trialCodec :: e -> TomlCodec a -> TomlCodec (Trial e a)
 trialCodec e = Toml.dimap trialToMaybe (maybeToTrial e) . Toml.dioptional
 
-
 {- | 'TomlCodec' for 'Trial' that adds an informative message if a
 given codec fails.
 
@@ -45,6 +45,14 @@ trialStrCodec
     -> TomlCodec (Trial e a)
 trialStrCodec codecA key =
     Toml.dimap (withTag "TOML") unTag $ taggedTrialStrCodec codecA key
+
+{- | 'TomlCodec' for 'Maybe' inside 'Trial'. Never fails,
+doesn't change history of events.
+
+@since 0.0.0.0
+-}
+trialMaybeCodec :: TomlCodec a -> TomlCodec (Trial e (Maybe a))
+trialMaybeCodec = Toml.dimap (join . trialToMaybe) pure . Toml.dioptional
 
 {- | 'TomlCodec' for 'TaggedTrial' that uses given @tag@ in a 'Fiasco'
 if a given codec fails, and also adds @tag@ to the result.
