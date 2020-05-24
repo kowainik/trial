@@ -56,27 +56,72 @@ import GHC.TypeLits (KnownSymbol, symbolVal)
 import qualified Data.DList as DL
 
 
+{- |
+
+@since 0.0.0.0
+-}
 data Fatality
     = W
     | E
     deriving stock (Show, Eq, Enum, Bounded)
 
+{- |
+
+@since 0.0.0.0
+-}
 pattern Warning :: Fatality
 pattern Warning <- W
 
+{- |
+
+@since 0.0.0.0
+-}
 pattern Error :: Fatality
 pattern Error <- E
 
 withW :: Functor f => f e -> f (Fatality, e)
 withW = fmap (W,)
 
+{- |
+
+@since 0.0.0.0
+-}
 data Trial e a
     = Fiasco (DList (Fatality, e))
     | Result (DList e) a
     deriving stock (Show, Eq)
 
+{- |
+
+@since 0.0.0.0
+-}
 type TaggedTrial tag a = Trial tag (tag, a)
 
+{- | Combine two 'Trial' values. Returns 'Result' if at least one
+argument is 'Result'.
+
+Let's create some default values:
+
+>>> f1 = fiasco "Not initialised..."
+>>> f2 = fiasco "Parsing error!"
+>>> r1 = result "r1: From CLI" 5
+>>> r2 = result "r2: Default" 42
+
+And here is how combination of those values look like:
+
+>>> f1 <> f2
+Fiasco (fromList [(E,"Not initialised..."),(E,"Parsing error!")])
+>>> f1 <> r1
+Result (fromList ["Not initialised...","r1: From CLI"]) 5
+>>> f2 <> r2
+Result (fromList ["Parsing error!","r2: Default"]) 42
+>>> r1 <> r2
+Result (fromList ["r1: From CLI","r2: Default"]) 42
+>>> f1 <> r1 <> f2 <> r2
+Result (fromList ["Not initialised...","r1: From CLI","Parsing error!","r2: Default"]) 42
+
+@since 0.0.0.0
+-}
 instance Semigroup (Trial e a) where
     (<>) :: Trial e a -> Trial e a -> Trial e a
     Fiasco e1   <> Fiasco e2   = Fiasco $ e1 <> e2
@@ -89,6 +134,7 @@ instance Semigroup (Trial e a) where
     sconcat (x :| xs) = foldl' (<>) x xs
     {-# INLINE sconcat #-}
 
+-- | @since 0.0.0.0
 instance Functor (Trial e) where
     fmap :: (a -> b) -> Trial e a -> Trial e b
     fmap _ (Fiasco e)   = Fiasco e
@@ -100,6 +146,20 @@ instance Functor (Trial e) where
     a <$ Result e _ = Result e a
     {-# INLINE (<$) #-}
 
+{- | Combine two 'Trial's but recording all 'Result' events inside
+'Fiasco' as 'Warning's.
+
+>>> fiasco "No default" <*> fiasco "No config"
+Fiasco (fromList [(E,"No default"),(E,"No config")])
+>>> fiasco "No default" *> result "Option deprecated" 10
+Fiasco (fromList [(E,"No default"),(W,"Option deprecated")])
+>>> (,) <$> result "Redundant" 10 <*> result "No CLI Flag" True
+Result (fromList ["Redundant","No CLI Flag"]) (10,True)
+>>> result "Option deprecated" 10 *> pure 42
+Result (fromList ["Option deprecated"]) 42
+
+@since 0.0.0.0
+-}
 instance Applicative (Trial e) where
     pure :: a -> Trial e a
     pure = Result DL.empty
@@ -137,6 +197,18 @@ instance Applicative (Trial e) where
     liftA2 f (Result e1 a) (Result e2 b) = Result (e1 <> e2) (f a b)
     {-# INLINE liftA2 #-}
 
+{- | Return the first 'Result'. Otherwise, append two histories in
+both 'Fiasco's.
+
+>>> fiasco "No info" <|> pure 42
+Result (fromList []) 42
+>>> pure 42 <|> result "Something" 10
+Result (fromList []) 42
+>>> fiasco "No info" <|> fiasco "Some info"
+Fiasco (fromList [(E,"No info"),(E,"Some info")])
+
+@since 0.0.0.0
+-}
 instance Alternative (Trial e) where
     empty :: Trial e a
     empty = Fiasco DL.empty
@@ -148,18 +220,21 @@ instance Alternative (Trial e) where
     (Fiasco e1) <|> (Fiasco e2) = Fiasco (e1 <> e2)
     {-# INLINE (<|>) #-}
 
+-- | @since 0.0.0.0
 instance Bifunctor Trial where
     bimap :: (e1 -> e2) -> (a -> b) -> Trial e1 a -> Trial e2 b
     bimap ef _ (Fiasco es)   = Fiasco (DL.map (second ef) es)
     bimap ef af (Result e a) = Result (DL.map ef e) (af a)
     {-# INLINE bimap #-}
 
+-- | @since 0.0.0.0
 instance Bifoldable Trial where
     bifoldMap :: (Monoid m) => (e -> m) -> (a -> m) -> Trial e a -> m
     bifoldMap ef _ (Fiasco es)    = foldMap (ef . snd) es
     bifoldMap ef ea (Result es a) = foldMap ef es <> ea a
     {-# INLINE bifoldMap #-}
 
+-- | @since 0.0.0.0
 instance Bitraversable Trial where
     bitraverse :: (Applicative f) => (e1 -> f e2) -> (a -> f b) -> Trial e1 a -> f (Trial e2 b)
     bitraverse ef _ (Fiasco es)    = Fiasco <$> traverseDList (traverse ef) es
@@ -171,39 +246,123 @@ traverseDList :: (Applicative f) => (a -> f b) -> DList a -> f (DList b)
 traverseDList f = fmap DL.fromList . traverse f . DL.toList
 {-# INLINE traverseDList #-}
 
+{- |
+
+@since 0.0.0.0
+-}
 fiasco :: e -> Trial e a
 fiasco e = Fiasco $ DL.singleton (E, e)
 
+{- |
+
+@since 0.0.0.0
+-}
 fiascos :: [e] -> Trial e a
 fiascos = Fiasco . DL.fromList . map (E,)
 
+{- |
+
+@since 0.0.0.0
+-}
 result :: e -> a -> Trial e a
 result e = Result $ DL.singleton e
 
+{- | Convert 'Maybe' to 'Trial' but assigning 'E' severity when value
+is 'Nothing'.
+
+>>> maybeToTrial "No default" (Just 10)
+Result (fromList []) 10
+>>> maybeToTrial "No default" Nothing
+Fiasco (fromList [(E,"No default")])
+
+Functions 'maybeToTrial' and 'trialToMaybe' satisfy property:
+
+@
+'trialToMaybe' . 'maybeToTrial' e ≡ 'id'
+@
+
+@since 0.0.0.0
+-}
 maybeToTrial :: e -> Maybe a -> Trial e a
 maybeToTrial e = \case
     Just a  -> pure a
     Nothing -> fiasco e
 
+{- | 'Convert 'Trial' to 'Maybe' by losing all history information.
+
+>>> trialToMaybe $ fiasco "Some info"
+Nothing
+>>> trialToMaybe $ result "From CLI" 3
+Just 3
+
+@since 0.0.0.0
+-}
 trialToMaybe :: Trial e a -> Maybe a
 trialToMaybe (Result _ a) = Just a
 trialToMaybe (Fiasco _)   = Nothing
 
+{- | Convert 'Either' to 'Trial' by assigning 'Fatality' 'W' to a
+'Left' value.
+
+>>> eitherToTrial (Right 42)
+Result (fromList []) 42
+>>> eitherToTrial (Left "Missing value")
+Fiasco (fromList [(E,"Missing value")])
+
+Functions 'eitherToTrial' and 'trialToEither' satisfy property:
+
+@
+'trialToEither' . 'eitherToTrial' ≡ 'id'
+@
+
+@since 0.0.0.0
+-}
 eitherToTrial :: Either e a -> Trial e a
 eitherToTrial (Right a) = pure a
 eitherToTrial (Left e)  = fiasco e
 
+{- | Convert 'Trial' to 'Either' by concatenating all history events.
+
+>>> trialToEither (result "No info" 42)
+Right 42
+>>> trialToEither $ fiascos ["Hello, ", "there"]
+Left "Hello, there"
+
+@since 0.0.0.0
+-}
 trialToEither :: Monoid e => Trial e a -> Either e a
 trialToEither (Result _ a) = Right a
 trialToEither (Fiasco es)  = Left $ foldl' (<>) mempty $ DL.map snd es
 
+{- | Tag a 'Trial'.
+
+>>> withTag "Answer" $ pure 42
+Result (fromList []) ("Answer",42)
+>>> withTag "Answer" $ fiasco "No answer"
+Fiasco (fromList [(E,"No answer")])
+
+@since 0.0.0.0
+-}
 withTag :: tag -> Trial tag a -> TaggedTrial tag a
 withTag tag = fmap (tag,)
 
+{- | Untag a 'Trial' by adding a @tag@ to a history of events.
+
+>>> unTag $ pure ("Chosen randomly",5)
+Result (fromList ["Chosen randomly"]) 5
+>>> unTag $ fiasco "No random"
+Fiasco (fromList [(E,"No random")])
+
+@since 0.0.0.0
+-}
 unTag :: TaggedTrial tag a -> Trial tag a
 unTag (Fiasco e)          = Fiasco e
 unTag (Result e (tag, a)) = Result (DL.snoc e tag) a
 
+{- |
+
+@since 0.0.0.0
+-}
 instance
        ( HasField label r (Trial tag (tag, a))
        , IsString tag
