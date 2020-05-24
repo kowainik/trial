@@ -8,15 +8,16 @@ Trial helpers for @tomland@.
 
 module Trial.Tomland
     ( trialCodec
-    , trialTextCodec
+    , trialStrCodec
     , taggedTrialCodec
-    , taggedTrialTextCodec
+    , taggedTrialStrCodec
     ) where
 
-import Data.Text (Text)
+import Data.String (IsString (..))
 import Toml (Key, TomlCodec)
 import Trial (TaggedTrial, Trial (..), fiasco, maybeToTrial, trialToMaybe, unTag, withTag)
 
+import qualified Data.Text as Text
 import qualified Toml
 
 
@@ -33,9 +34,14 @@ given codec fails.
 
 @since 0.0.0.0
 -}
-trialTextCodec :: forall a . (Key -> TomlCodec a) -> Key -> TomlCodec (Trial Text a)
-trialTextCodec codecA key =
-    Toml.dimap (withTag "TOML") unTag $ taggedTrialTextCodec codecA key
+trialStrCodec
+    :: forall e a
+    .  (IsString e, Semigroup e)
+    => (Key -> TomlCodec a)
+    -> Key
+    -> TomlCodec (Trial e a)
+trialStrCodec codecA key =
+    Toml.dimap (withTag "TOML") unTag $ taggedTrialStrCodec codecA key
 
 {- | 'TomlCodec' for 'TaggedTrial' that uses given @tag@ in a 'Fiasco'
 if a given codec fails, and also adds @tag@ to the result.
@@ -62,12 +68,20 @@ a given codec fails, and also adds a tag where the field comes from.
 
 @since 0.0.0.0
 -}
-taggedTrialTextCodec :: (Key -> TomlCodec a) -> Key ->  TomlCodec (TaggedTrial Text a)
-taggedTrialTextCodec codecA key =
+taggedTrialStrCodec
+    :: forall tag a
+    .  (IsString tag, Semigroup tag)
+    => (Key -> TomlCodec a)
+    -> Key
+    -> TomlCodec (TaggedTrial tag a)
+taggedTrialStrCodec codecA key =
     Toml.dimap (fmap snd . trialToMaybe) handleMaybe
     $ Toml.dioptional (codecA key)
   where
-    handleMaybe :: Maybe a -> TaggedTrial Text a
+    keyS :: tag
+    keyS = fromString $ Text.unpack $ Toml.prettyKey key
+
+    handleMaybe :: Maybe a -> TaggedTrial tag a
     handleMaybe = \case
-        Nothing -> fiasco $ "No TOML option specified for key: " <> Toml.prettyKey key
+        Nothing -> fiasco $ "No TOML option specified for key: " <> keyS
         Just a  -> withTag "TOML" $ pure a
