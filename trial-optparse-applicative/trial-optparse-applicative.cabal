@@ -1,8 +1,9 @@
 cabal-version:       2.4
-name:                trial
+name:                trial-optparse-applicative
 version:             0.0.0.0
-synopsis:            Trial Data Type
-description:         Trial Data Type
+synopsis:            Trial helper functions for @optparse-applicative@
+description:         @Trial@ data structure related helper functions for
+                     [optparse-applicative](https://hackage.haskell.org/package/optparse-applicative).
 homepage:            https://github.com/kowainik/trial
 bug-reports:         https://github.com/kowainik/trial/issues
 license:             MPL-2.0
@@ -10,7 +11,7 @@ license-file:        LICENSE
 author:              Kowainik
 maintainer:          Kowainik <xrom.xkov@gmail.com>
 copyright:           2020 Kowainik
-category:            Data Structure, Data
+category:            CLI
 build-type:          Simple
 extra-doc-files:     README.md
                      CHANGELOG.md
@@ -58,32 +59,6 @@ common common-options
 library
   import:              common-options
   hs-source-dirs:      src
-  build-depends:       dlist ^>= 0.8.0.8
-  exposed-modules:     Trial
-
-test-suite trial-test
-  import:              common-options
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is:             Spec.hs
-  other-modules:       Test.Trial.Gen
-                       Test.Trial.Laws
-                       Test.Trial.Property
-
   build-depends:       trial
-                     , dlist
-                     , hedgehog ^>= 1.0
-                     , hspec ^>= 2.7
-                     , hspec-hedgehog ^>= 0.0.1.1
-
-  ghc-options:         -threaded
-                       -rtsopts
-                       -with-rtsopts=-N
-
-test-suite trial-doctest
-  import:              common-options
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is:             Doctest.hs
-  build-depends:       doctest ^>= 0.16
-  ghc-options:         -threaded
+                     , optparse-applicative ^>= 0.15
+  exposed-modules:     Trial.OptparseApplicative
