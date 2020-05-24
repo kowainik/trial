@@ -81,6 +81,7 @@ test-suite trial-test
   main-is:             Spec.hs
   other-modules:       Test.Trial.Gen
                        Test.Trial.Laws
+                       Test.Trial.Property
 
   build-depends:       trial
                      , dlist

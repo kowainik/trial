@@ -5,16 +5,17 @@ module Test.Trial.Laws
 import Control.Applicative (Alternative (..), liftA2)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Semigroup (Semigroup (..))
-import Hedgehog (Gen, PropertyT, forAll, forAllWith, (===))
+import Hedgehog (Gen, forAll, forAllWith, (===))
 import Test.Hspec (Spec, describe, it, parallel)
 import Test.Hspec.Hedgehog (hedgehog)
 
-import Test.Trial.Gen (genFunction, genFunction2, genInt, genSmallInt, genSmallList, genTrial)
+import Test.Trial.Gen (Property, genFunction, genFunction2, genInt, genSmallInt, genSmallList,
+                       genTrial)
 import Trial (Trial)
 
 
 lawsSpec :: Spec
-lawsSpec = describe "Trial Property Tests" $ parallel $ do
+lawsSpec = describe "Trial Instance Laws" $ parallel $ do
     describe "Semigroup instance for Trial" $ do
         it "Associativity: a <> (b <> c) ≡ (a <> b) <> c"
             semigroupAssociativity
@@ -168,9 +169,6 @@ alternativeLeftIdentity = hedgehog $ do
 ----------------------------------------------------------------------------
 -- Property helpers
 ----------------------------------------------------------------------------
-
--- | Helper alias for tests.
-type Property = PropertyT IO ()
 
 {- | Property test for the associativity law:
 
