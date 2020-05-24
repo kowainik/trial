@@ -16,4 +16,5 @@ main = doctest
     : "-XScopedTypeVariables"
     : "-XTupleSections"
     : "-XTypeApplications"
+    : "-XViewPatterns"
     : [ "src/Trial.hs" ]

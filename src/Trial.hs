@@ -27,6 +27,18 @@ module Trial
        , fiascos
        , result
 
+         -- * Work with Lists
+         -- $patternList
+       , pattern FiascoL
+       , pattern ResultL
+       , getTrialInfo
+       , fiascoErrors
+       , fiascoWarnings
+       , resultWarnings
+       , anyWarnings
+       , dlistToList
+
+
          -- * 'Maybe' combinators
        , maybeToTrial
        , trialToMaybe
@@ -78,6 +90,8 @@ pattern Warning <- W
 -}
 pattern Error :: Fatality
 pattern Error <- E
+
+{-# COMPLETE Warning, Error #-}
 
 withW :: Functor f => f e -> f (Fatality, e)
 withW = fmap (W,)
@@ -377,3 +391,128 @@ instance
             Fiasco e          -> Fiasco e
             Result e (tag, a) -> Result (DL.snoc e $ fieldName <> tag) a
     {-# INLINE fromLabel #-}
+
+{- $patternList
+
+>>> :{
+foo :: Trial String Int -> String
+foo (FiascoL []) = "Fiasco list is empty"
+foo (ResultL [] _) = "Result list is empty"
+foo _ = "Other case"
+:}
+
+>>> foo $ fiascos []
+"Fiasco list is empty"
+>>> foo $ pure 42
+"Result list is empty"
+>>> foo $ result "Something" 42
+"Other case"
+-}
+
+{- |
+
+@since 0.0.0.0
+-}
+pattern FiascoL :: [(Fatality, e)] -> Trial e a
+pattern FiascoL e <- Fiasco (DL.toList -> e)
+
+{- |
+
+@since 0.0.0.0
+-}
+pattern ResultL :: [e] -> a -> Trial e a
+pattern ResultL e a <- Result (DL.toList -> e) a
+
+{-# COMPLETE FiascoL, ResultL #-}
+
+{- | Get the list of 'Warning's and 'Error's together with the 'Maybe' 'Result' is applicable.
+
+>>> getTrialInfo $ result "Warning" 42
+([(W,"Warning")],Just 42)
+>>> getTrialInfo $ fiasco "Error"
+([(E,"Error")],Nothing)
+
+@since 0.0.0.0
+-}
+getTrialInfo :: Trial e a -> ([(Fatality, e)], Maybe a)
+getTrialInfo = \case
+    Fiasco e -> (DL.toList e, Nothing)
+    Result e a -> (map (W,) $ DL.toList e, Just a)
+
+{- | Returns all 'Error's in the 'Fiasco' constructor.
+If the given 'Trial' is 'Result' then returns an empty list instead.
+
+>>> fiascoErrors $ fiasco "One Error"
+["One Error"]
+>>> fiascoErrors $ result "Warning" 42
+[]
+>>> fiascoErrors (fiasco "Error" *> result "Warning" 42)
+["Error"]
+
+@since 0.0.0.0
+-}
+fiascoErrors :: Trial e a -> [e]
+fiascoErrors = \case
+    Result _ _ -> []
+    Fiasco e -> map snd $ filter ((==) E . fst) $ DL.toList e
+
+
+{- | Returns all 'Warning's in the 'Fiasco' constructor.
+If the given 'Trial' is 'Result' then returns an empty list instead.
+
+>>> fiascoWarnings $ fiasco "One Error"
+[]
+>>> fiascoWarnings $ result "Warning" 42
+[]
+>>> fiascoWarnings (fiasco "Error" *> result "Warning" 42)
+["Warning"]
+
+@since 0.0.0.0
+-}
+fiascoWarnings :: Trial e a -> [e]
+fiascoWarnings = \case
+    Result _ _ -> []
+    Fiasco e -> map snd $ filter ((==) W . fst) $ DL.toList e
+
+
+{- | Returns all 'Warning's in the 'Result' constructor.
+If the given 'Trial' is 'Fiasco' then returns an empty list instead.
+
+>>> resultWarnings $ fiasco "One Error"
+[]
+>>> resultWarnings $ result "Warning" 42
+["Warning"]
+>>> resultWarnings (fiasco "Error" *> result "Warning" 42)
+[]
+
+@since 0.0.0.0
+-}
+resultWarnings :: Trial e a -> [e]
+resultWarnings = \case
+    Result e _ -> DL.toList e
+    Fiasco _ -> []
+
+{- | Returns all 'Warning's in the 'Trial'. These includes both warnings in
+'Result' of in 'Fiasco'.
+
+>>> anyWarnings $ fiasco "One Error"
+[]
+>>> anyWarnings $ result "Warning" 42
+["Warning"]
+>>> anyWarnings (fiasco "Error" *> result "Warning" 42)
+["Warning"]
+
+@since 0.0.0.0
+-}
+anyWarnings :: Trial e a -> [e]
+anyWarnings = \case
+    Result e _ -> DL.toList e
+    Fiasco e -> map snd $ filter ((==) W . fst) $ DL.toList e
+
+{- |
+
+@since 0.0.0.0
+-}
+dlistToList :: DList a -> [a]
+dlistToList = DL.toList
+{-# INLINE dlistToList #-}
