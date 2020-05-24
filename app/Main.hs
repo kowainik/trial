@@ -8,7 +8,7 @@ import Data.Text (Text)
 import Options.Applicative (Parser, ReadM, auto, execParser, info, long, option, optional, str)
 import Toml (Key, TomlCodec, (.=))
 
-import Trial (Fatality (..), TaggedTrial, Trial (..), maybeToTrial, trialToMaybe, withTag)
+import Trial (TaggedTrial, Trial (..), fiasco, maybeToTrial, trialToMaybe, withTag)
 
 import qualified Data.Text as T
 import qualified Toml
@@ -50,7 +50,7 @@ makeOptions opts = do
 defaultPartialOptions :: PartialOptions
 defaultPartialOptions = PartialOptions
     { poRetryCount    = withTag "Default" $ pure 5
-    , poHost          = withTag "Default" $ Fiasco $ pure (E, "No default value for Host")
+    , poHost          = withTag "Default" $ fiasco "No default value for Host"
     , poCharacterCode = withTag "Default" empty
     }
 
@@ -94,7 +94,7 @@ parseOptions = do
     cmdLineOptions <- execParser $ info partialOptionsParser mempty
     toml <- Toml.decodeFileEither partialOptionsCodec "options.toml"
     let tomlOptions = case toml of
-            Left errs -> let e = Fiasco $ pure (E, Toml.prettyTomlDecodeErrors errs) in
+            Left errs -> let e = fiasco $ Toml.prettyTomlDecodeErrors errs in
                 PartialOptions e e e
             Right a -> a
 
