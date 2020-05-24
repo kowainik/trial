@@ -11,8 +11,10 @@ module Trial.Tomland
     , trialStrCodec
     , taggedTrialCodec
     , taggedTrialStrCodec
+    , taggedTrialMaybeCodec
     ) where
 
+import Control.Monad (join)
 import Data.String (IsString (..))
 import Toml (Key, TomlCodec)
 import Trial (TaggedTrial, Trial (..), fiasco, maybeToTrial, trialToMaybe, unTag, withTag)
@@ -28,6 +30,7 @@ codec fails.
 -}
 trialCodec :: e -> TomlCodec a -> TomlCodec (Trial e a)
 trialCodec e = Toml.dimap trialToMaybe (maybeToTrial e) . Toml.dioptional
+
 
 {- | 'TomlCodec' for 'Trial' that adds an informative message if a
 given codec fails.
@@ -85,3 +88,15 @@ taggedTrialStrCodec codecA key =
     handleMaybe = \case
         Nothing -> fiasco $ "No TOML option specified for key: " <> keyS
         Just a  -> withTag "TOML" $ pure a
+
+{- | 'TomlCodec' for 'Maybe' inside 'TaggedTrial'. Never fails,
+doesn't change history of events, and adds a tag.
+
+@since 0.0.0.0
+-}
+taggedTrialMaybeCodec :: IsString e => TomlCodec a -> TomlCodec (TaggedTrial e (Maybe a))
+taggedTrialMaybeCodec =
+    Toml.dimap taggedTrialToMaybe (withTag "TOML" . pure) . Toml.dioptional
+  where
+    taggedTrialToMaybe :: TaggedTrial e (Maybe a) -> Maybe a
+    taggedTrialToMaybe = join . fmap snd . trialToMaybe

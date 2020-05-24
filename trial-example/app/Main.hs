@@ -6,10 +6,11 @@ module Main (main) where
 import Control.Applicative (empty)
 import Data.Text (Text)
 import Options.Applicative (Parser, auto, execParser, info, str)
-import Toml (Key, TomlCodec, (.=))
+import Toml (TomlCodec, (.=))
 
-import Trial (TaggedTrial, Trial (..), fiasco, maybeToTrial, trialToMaybe, withTag)
+import Trial (TaggedTrial, Trial (..), fiasco, withTag)
 import Trial.OptparseApplicative (taggedTrialOption)
+import Trial.Tomland (taggedTrialMaybeCodec, taggedTrialStrCodec)
 
 import qualified Toml
 
@@ -54,9 +55,6 @@ defaultPartialOptions = PartialOptions
     , poCharacterCode = withTag "Default" empty
     }
 
-mToTrial :: Text -> Text -> Maybe a -> TaggedTrial Text a
-mToTrial from field = withTag from . maybeToTrial ("No " <> from <> " option specified for " <> field)
-
 partialOptionsParser :: Parser PartialOptions
 partialOptionsParser =  PartialOptions
     <$> taggedTrialOption "retry-count" auto
@@ -67,23 +65,9 @@ partialOptionsParser =  PartialOptions
 
 partialOptionsCodec :: TomlCodec PartialOptions
 partialOptionsCodec = PartialOptions
-    <$> trialCodec "retry-count" Toml.int  .= poRetryCount
-    <*> trialCodec "host"        Toml.text .= poHost
-    <*> trialMaybeCodec "character-code"   .= poCharacterCode
-  where
-    trialMaybeCodec :: Key -> TomlCodec (TaggedTrial Text (Maybe Bool))
-    trialMaybeCodec key = Toml.dimap f (withTag "TOML" . pure) $
-        Toml.dioptional (Toml.bool key)
-
-    f :: TaggedTrial Text (Maybe a) -> Maybe a
-    f = \case
-        Result _ a -> snd a
-        Fiasco _ -> Nothing
-
-trialCodec :: Key -> (Key -> TomlCodec a) -> TomlCodec (TaggedTrial Text a)
-trialCodec key codecA = Toml.dimap (fmap snd . trialToMaybe) (mToTrial "TOML" $ Toml.prettyKey key) $
-    Toml.dioptional (codecA key)
-
+    <$> taggedTrialStrCodec Toml.int "retry-count".= poRetryCount
+    <*> taggedTrialStrCodec Toml.text "host" .= poHost
+    <*> taggedTrialMaybeCodec (Toml.bool "character-code") .= poCharacterCode
 
 parseOptions :: IO (Trial Text Options)
 parseOptions = do

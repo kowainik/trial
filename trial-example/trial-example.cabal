@@ -61,6 +61,7 @@ executable trial-example
   hs-source-dirs:      app
   build-depends:       trial
                      , trial-optparse-applicative
+                     , trial-tomland
                      , optparse-applicative ^>= 0.15
                      , text
                      , tomland ^>= 1.3.0.0
