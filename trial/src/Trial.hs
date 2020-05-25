@@ -9,7 +9,24 @@ Copyright: (c) 2020 Kowainik
 SPDX-License-Identifier: MPL-2.0
 Maintainer: Kowainik <xrom.xkov@gmail.com>
 
-Trial Data Type
+'Trial' data structure is 'Either'-like structure that stores tagged
+history of all events. 'Trial' has two constructors:
+
+* 'Fiasco': stores the list of tagged events, at least one event has
+  tag 'Error'
+* 'Result': stores the final result and the list of events where each
+  event has tag 'Warning'
+
+@trial@ implements the composable interface for creating and combining
+values of type 'Trial', so the history of all events is stored
+inside. Fundamental algebraic instances provide the following main
+features:
+
+* 'Semigroup': take the last 'Result' and combine all events.
+* 'Applicative': return 'Fiasco', if at least one value if 'Fiasco',
+  combine all events.
+* 'Alternative': return first 'Result', combine events only inside
+  'Fiasco's.
 -}
 
 module Trial
@@ -75,7 +92,13 @@ import qualified Colourista.Short as C
 import qualified Data.DList as DL
 
 
-{- |
+{- | History event tag. You can't create values of type 'Fatality',
+you can only pattern-match on them. 'Trial' smart constructors and
+instances take care of assigning proper 'Fatality' values.
+
+* 'Error': the event appeared in the 'Fiasco' first time
+* 'Warning': the event appeared in the 'Result' first time, or was
+  moved from 'Fiasco' to 'Result'
 
 @since 0.0.0.0
 -}
@@ -84,14 +107,14 @@ data Fatality
     | E
     deriving stock (Show, Eq, Enum, Bounded)
 
-{- |
+{- | 'Warning' pattern synonym.
 
 @since 0.0.0.0
 -}
 pattern Warning :: Fatality
 pattern Warning <- W
 
-{- |
+{- | 'Error' pattern synonym.
 
 @since 0.0.0.0
 -}
@@ -102,17 +125,29 @@ pattern Error <- E
 
 withW :: Functor f => f e -> f (Fatality, e)
 withW = fmap (W,)
+{-# INLINE withW #-}
 
-{- |
+{- | 'Trial' is a data type that stores history of all events happened
+with a value. In addition, each event is tagged with a value of type
+'Fatality' that says whether the event is critical or not.
+
+API provided by @trial@ guarantees the following property:
+
+* If the final value is 'Fiasco', it is either an empty list or a list
+  with at least one event of 'Fatality' 'Error'.
 
 @since 0.0.0.0
 -}
 data Trial e a
+    -- | Stores list of tagged events.
     = Fiasco (DList (Fatality, e))
+    -- | Store list of events and the final result.
     | Result (DList e) a
     deriving stock (Show, Eq)
 
-{- |
+{- | In addition to usual 'Trial' capabilities, 'TaggedTrial' allows
+attaching a @tag@ to the resulting value, so you can track which event
+helped to obtain a value.
 
 @since 0.0.0.0
 -}
@@ -267,29 +302,37 @@ traverseDList :: (Applicative f) => (a -> f b) -> DList a -> f (DList b)
 traverseDList f = foldr (\a fDlistB -> liftA2 DL.cons (f a) fDlistB) (pure DL.empty)
 {-# INLINE traverseDList #-}
 
-{- |
+{- | Smart constructor for 'Trial'. Returns 'Fiasco' with a single
+event and 'Error' 'Fatality'.
 
 @since 0.0.0.0
 -}
 fiasco :: e -> Trial e a
 fiasco e = Fiasco $ DL.singleton (E, e)
+{-# INLINE fiasco #-}
 
-{- |
+{- | Smart constructor for 'Trial'. Returns 'Fiasco' with a list of
+events, where each has 'Fatality' 'Error'.
 
 @since 0.0.0.0
 -}
 fiascos :: [e] -> Trial e a
 fiascos = Fiasco . DL.fromList . map (E,)
+{-# INLINE fiascos #-}
 
-{- |
+{- | Smart constructor for 'Trial'. Returns 'Result' with a single
+event of 'Warning' 'Fatality'.
+
+__Hint:__ Use 'pure' to create 'Result' with empty list of events.
 
 @since 0.0.0.0
 -}
 result :: e -> a -> Trial e a
 result e = Result $ DL.singleton e
+{-# INLINE result #-}
 
-{- | Convert 'Maybe' to 'Trial' but assigning 'E' severity when value
-is 'Nothing'.
+{- | Convert 'Maybe' to 'Trial' but assigning 'Error' 'Fatality' when
+the value is 'Nothing'.
 
 >>> maybeToTrial "No default" (Just 10)
 Result (fromList []) 10
@@ -322,8 +365,8 @@ trialToMaybe :: Trial e a -> Maybe a
 trialToMaybe (Result _ a) = Just a
 trialToMaybe (Fiasco _)   = Nothing
 
-{- | Convert 'Either' to 'Trial' by assigning 'Fatality' 'W' to a
-'Left' value.
+{- | Convert 'Either' to 'Trial' by assigning 'Fatality' 'Warning' to
+a 'Left' value.
 
 >>> eitherToTrial (Right 42)
 Result (fromList []) 42
@@ -380,7 +423,10 @@ unTag :: TaggedTrial tag a -> Trial tag a
 unTag (Fiasco e)          = Fiasco e
 unTag (Result e (tag, a)) = Result (DL.snoc e tag) a
 
-{- |
+{- | Convenient instance to convert record fields of type
+'TaggedTrial' to 'Trial' by appending field names to the history. This
+instance automatically combines tags and record field names into human
+readable message, so the resulting history has more context.
 
 @since 0.0.0.0
 -}
@@ -401,6 +447,13 @@ instance
 
 {- $patternList
 
+'Trial' stores list of events as 'DList' internally for efficient
+appending. But when pattern-matching on the final value, it's more
+convenient to work directly with lists. 'FiascoL' and 'ResultL' are
+Pattern Synonyms for working with lists. It's recommended to use them
+only once at the end, since conversion from 'DList' to list takes some
+time.
+
 >>> :{
 foo :: Trial String Int -> String
 foo (FiascoL []) = "Fiasco list is empty"
@@ -416,14 +469,16 @@ foo _ = "Other case"
 "Other case"
 -}
 
-{- |
+{- | Uni-directional Pattern Synonym for 'Fiasco' that allows
+pattern-matching directly on lists.
 
 @since 0.0.0.0
 -}
 pattern FiascoL :: [(Fatality, e)] -> Trial e a
 pattern FiascoL e <- Fiasco (DL.toList -> e)
 
-{- |
+{- | Uni-directional Pattern Synonym for 'Result' that allows
+pattern-matching directly on lists.
 
 @since 0.0.0.0
 -}
@@ -432,7 +487,8 @@ pattern ResultL e a <- Result (DL.toList -> e) a
 
 {-# COMPLETE FiascoL, ResultL #-}
 
-{- | Get the list of 'Warning's and 'Error's together with the 'Maybe' 'Result' is applicable.
+{- | Get the list of 'Warning's and 'Error's together with the 'Maybe'
+'Result' is applicable.
 
 >>> getTrialInfo $ result "Warning" 42
 ([(W,"Warning")],Just 42)
@@ -516,7 +572,7 @@ anyWarnings = \case
     Result e _ -> DL.toList e
     Fiasco e -> map snd $ filter ((==) W . fst) $ DL.toList e
 
-{- |
+{- | Helper function to convert 'DList' to list.
 
 @since 0.0.0.0
 -}
@@ -524,6 +580,15 @@ dlistToList :: DList a -> [a]
 dlistToList = DL.toList
 {-# INLINE dlistToList #-}
 
+{- | Print aligned and colourful 'Fatality':
+
+* 'Warning' in yellow
+* 'Error' in red
+
+See 'prettyPrintTrial' for examples.
+
+@since 0.0.0.0
+-}
 prettyPrintFatality :: (Semigroup str, IsString str) => Fatality -> str
 prettyPrintFatality = \case
     E -> C.formatWith [C.red]    "Error  "
@@ -532,6 +597,14 @@ prettyPrintFatality = \case
 prettyPrintEntry :: (Semigroup e, IsString e) => (Fatality, e) -> e
 prettyPrintEntry (f, e) = "  * [" <> prettyPrintFatality f <> "] " <> e <> "\n"
 
+{- | Colourful pretty-printing of 'Trial'.
+
+![Fiasco](https://user-images.githubusercontent.com/8126674/82759167-830c9b80-9de3-11ea-8e72-c5f6c2cdcb6e.png)
+
+![Result](https://user-images.githubusercontent.com/8126674/82759176-8b64d680-9de3-11ea-8426-e5de941ae9a4.png)
+
+@since 0.0.0.0
+-}
 prettyPrintTrial
     :: (Show a, Semigroup e, IsString e)
     => Trial e a
@@ -544,6 +617,13 @@ prettyPrintTrial = \case
         <> C.i "\nWith the following warnings:\n"
         <> foldr (\e -> (<>) (prettyPrintEntry (W, e))) "" es
 
+{- | Colourful pretty-printing of 'TaggedTrial'. Similar to
+'prettyPrintTrial', but also prints the resulting @tag@ for 'Result'.
+
+![Tag](https://user-images.githubusercontent.com/8126674/82759188-93bd1180-9de3-11ea-8a76-337d73cf6cc0.png)
+
+@since 0.0.0.0
+-}
 prettyPrintTaggedTrial
     :: (Show a, Semigroup e, IsString e)
     => TaggedTrial e a
