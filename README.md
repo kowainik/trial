@@ -73,6 +73,7 @@ data Trial e a
            │ ╰╴Resulting type
            │
            ╰╴An error item type
+
     -- | Unsuccessful case
     = Fiasco (DList (Fatality, e))
               │      │         │
@@ -137,7 +138,7 @@ in the application.
 
 If you need to collect configurations from different places, combine the results
 into a single configuration, you can find the `Trial` data structure quite
-handy. With trial you can get the event history for free and also you can keep
+handy. With `trial` you can get the event history for free and also you can keep
 track of where the final result for each component of your configurations type
 comes from.
 
