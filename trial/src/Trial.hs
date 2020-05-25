@@ -323,7 +323,7 @@ fiascos = Fiasco . DL.fromList . map (E,)
 {- | Smart constructor for 'Trial'. Returns 'Result' with a single
 event of 'Warning' 'Fatality'.
 
-__Hint:__ Use 'pure' to create 'Result' with empty list of events.
+__Hint:__ Use 'pure' to create a 'Result' with an empty list of events.
 
 @since 0.0.0.0
 -}
@@ -488,7 +488,7 @@ pattern ResultL e a <- Result (DL.toList -> e) a
 {-# COMPLETE FiascoL, ResultL #-}
 
 {- | Get the list of 'Warning's and 'Error's together with the 'Maybe'
-'Result' is applicable.
+'Result' if applicable.
 
 >>> getTrialInfo $ result "Warning" 42
 ([(W,"Warning")],Just 42)
