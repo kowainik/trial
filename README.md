@@ -14,10 +14,10 @@ This is a multi-package project that has the following packages inside:
 
 | Package                      | Description                                                                                                                                                  |
 |------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `trial`                      | The main package that contains the `Trial` data structure, instances and useful functions to work with the structure |
-| `trial-optparse-applicative` | `Trial` structure integration with the [`optparse-applicative`](https://hackage.haskell.org/package/optparse-applicative) library for Command Line Interface |
-| `trial-tomland`              | `Trial` structure integration with the [`tomland`](https://hackage.haskell.org/package/tomland) library for TOML configurations    |
-| `trial-example`              | Example project with the usage example of `Trial` data structure |
+| `trial`                      | The main package that contains the `Trial` data structure, instances and useful functions to work with the structure. |
+| `trial-optparse-applicative` | `Trial` structure integration with the [`optparse-applicative`](https://hackage.haskell.org/package/optparse-applicative) library for Command Line Interface. |
+| `trial-tomland`              | `Trial` structure integration with the [`tomland`](https://hackage.haskell.org/package/tomland) library for TOML configurations.   |
+| `trial-example`              | Example project with the usage example of the `Trial` data structure. |
 
 ## How to use `trial`
 
@@ -54,16 +54,16 @@ Let's have a closer look at the `Trial` data structure.
 `Trial` is a sum type that has two constructors:
 
   - `Fiasco` — represents the unsuccessful state similar to the `Left`
-    constructor of `Either`. However, unlike it, `Fiasco` holds a list of all
-    `error`-like items that happened on the way. Each such item has a notion of
+    constructor of `Either`. However, unlike `Left`, `Fiasco` holds a list of all
+    `error`-like items that happened along the way. Each such item has a notion of
     `Fatality` (the severity of the error). The following cases cover
     `Fatality`:
-      + `Error` — fatal error that led to the final `Fiasco`.
-      + `Warning` — non-vital error, which didn't affect the result.
+      + `Error` — fatal error that led to the final fatal `Fiasco`.
+      + `Warning` — non-essential error, which didn't affect the result.
   - `Result` — represents the successful state similar to the `Right`
-    constructor of `Either`. However, unlike it, `Result` keeps the list of all
-    `error`-like items that happened along the way. All error items are warnings
-    as the final result was found anyway.
+    constructor of `Either`. However, unlike `Right`, `Result` keeps the list of
+    all `error`-like items that happened along the way. All error items are
+    warnings as the final result was found anyway.
 
 Schematically, `Trial` has the following internal representation:
 
@@ -109,9 +109,12 @@ Here are the main points:
 * `Semigroup` is responsible for the correct collection of history events, their
   `Fatality` level and the final result decision.
 * `Semigroup` chooses the latest 'Result' and combines all events.
+* Think of `Semigroup` instance as of high-level combinator of your result.
 * `Applicative` is responsible for the correct combination of `Trial`s.
 * `Applicative` returns `Fiasco`, if at least one value if `Fiasco`, combine all
   events.
+* Think of `Applicative` instance as of low-level combinator of your result on the
+  record fields level.
 * `Alternative` instance could help when the results are not combined but chosen
   instead.
 * `Alternative` returns the first `Result`, combines events only inside
@@ -130,11 +133,14 @@ type TaggedTrial tag a = Trial tag (tag, a)
 ```
 
 Due to the described instances implementation, the tag will always be aligned
-with the source it came from.
+with the final source it came from.
 
-The library provides different ways to add the tag: manual with the `withTag`
-function, or using `OverloadedLabels`and the provided `IsLabel` instance for
-`TaggedTrial`. You can choose the one you prefer.
+The library provides different ways to add the tag:
+  * Manual with the `withTag` function
+  * Using `OverloadedLabels`and the provided `IsLabel` instance for
+    `TaggedTrial`.
+
+You can choose the one that is more suitable for your use-case.
 
 ## Usage Examples
 
@@ -145,9 +151,10 @@ If you need to collect configurations from different places, combine the results
 into a single configuration, you can find the `Trial` data structure quite
 handy. With `trial` you can get the event history for free and also you can keep
 track of where the final result for each component of your configurations type
-comes from.
+comes from (by using `tag` functionality).
 
-The complete example in the `trial-example` package.
+The complete example in the `trial-example` package. It combines CLI, TOML
+configuration and the default options provided in the source code.
 
 To run it you can use the following command:
 
@@ -155,7 +162,8 @@ To run it you can use the following command:
 $ cabal run trial-example
 ```
 
- For the successful result you can exec:
+For the successful result you can use the CLI and provide necessary information
+in order to have the complete configurations:
 
 ```shell
 $ cabal run trial-example -- --host="abc"
