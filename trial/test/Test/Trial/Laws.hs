@@ -31,6 +31,8 @@ lawsSpec = describe "Trial Instance Laws" $ parallel $ do
         it "Const: fmap (const x) ≡ x <$"
             functorConst
     describe "Applicative instance for Trial" $ do
+        it "Functor and Applicative correspondence: fmap f x ≡ pure f <*> x"
+            functorApplicative
         it "Identity: pure id <*> x ≡ x"
             applicativeIdentity
         it "Composition: pure (.) <*> f <*> g <*> x ≡ f <*> (g <*> x)"
@@ -97,6 +99,12 @@ functorConst = hedgehog $ do
 ----------------------------------------------------------------------------
 -- Applicative instance properties
 ----------------------------------------------------------------------------
+
+functorApplicative :: Property
+functorApplicative = hedgehog $ do
+    f <- forAllWith (const "f") genFunction
+    x <- forAll $ genTrial genInt
+    fmap f x === (pure f <*> x)
 
 applicativeIdentity :: Property
 applicativeIdentity = hedgehog $ do
