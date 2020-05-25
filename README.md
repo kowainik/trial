@@ -108,9 +108,14 @@ Here are the main points:
   is guaranteed by the `Trial` `Semigroup` and `Applicative` instances.
 * `Semigroup` is responsible for the correct collection of history events, their
   `Fatality` level and the final result decision.
+* `Semigroup` chooses the latest 'Result' and combines all events.
 * `Applicative` is responsible for the correct combination of `Trial`s.
+* `Applicative` returns `Fiasco`, if at least one value if `Fiasco`, combine all
+  events.
 * `Alternative` instance could help when the results are not combined but chosen
   instead.
+* `Alternative` returns the first `Result`, combines events only inside
+  `Fiasco`s.
 
 ## Tagged `Trial`
 
