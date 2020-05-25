@@ -7,12 +7,19 @@ module Test.Trial.Gen
     , genSmallInt
     , genSmallList
     , genTrial
+
+      -- * Trial tree
+    , TrialTree (..)
+    , evalTrialTree
+    , genTrialTree
     ) where
 
-import Control.Applicative (liftA2)
+import Control.Applicative (Alternative (..), liftA2)
 import Data.DList (DList)
+import Data.List.NonEmpty (NonEmpty (..))
 import Hedgehog (Gen, PropertyT)
-import Trial (Fatality, Trial (..))
+
+import Trial (Fatality, Trial (..), fiasco, fiascos, result)
 
 import qualified Data.DList as DL
 import qualified Hedgehog.Gen as Gen
@@ -76,3 +83,47 @@ genEither genE genA = Gen.sized $ \n -> Gen.frequency
     [ (2, Left <$> genE)
     , (1 + fromIntegral n, Right <$> genA)
     ]
+
+{- | Data type that represents 'Trial' event tree to create a value of
+type @Trial Int a@.
+-}
+data TrialTree e a
+    = SCFiasco e  -- ^ @fiasco@ smart constructor
+    | SCFiascos (NonEmpty e)  -- ^ @fiascos@ smart constructor
+    | SCResult e a  -- ^ @result@ smart constructor
+    | Pure a  -- @pure@ from Applicative
+--    | Empty  -- @empty@ from Alternative
+    | Append (TrialTree e a) (TrialTree e a)  -- ^ @(<>)@ from Semigroup
+    | SeqR (TrialTree e a) (TrialTree e a)  -- ^ @(*>)@ from Applicative
+    | Alt (TrialTree e a) (TrialTree e a)  -- ^ @(<|>)@ from Alternative
+    deriving stock (Show, Eq)
+
+evalTrialTree :: TrialTree e a -> Trial e a
+evalTrialTree = \case
+    SCFiasco e -> fiasco e
+    SCFiascos es -> fiascos es
+    SCResult e a -> result e a
+    Pure a -> pure a
+--    Empty -> empty
+    Append l r -> evalTrialTree l <> evalTrialTree r
+    SeqR l r -> evalTrialTree l *> evalTrialTree r
+    Alt l r -> evalTrialTree l <|> evalTrialTree r
+
+genTrialTree :: forall e a . Gen e -> Gen a -> Gen (TrialTree e a)
+genTrialTree genE genA = Gen.recursive
+    Gen.choice
+    -- non-recursive generators
+    [ SCFiasco <$> genE
+    , SCFiascos <$> liftA2 (:|) genE (genSmallList genE)
+    , SCResult <$> genE <*> genA
+    , Pure <$> genA
+--    , pure Empty
+    ]
+    -- recursive generators
+    [ Gen.subterm2 genTree genTree Append
+    , Gen.subterm2 genTree genTree SeqR
+    , Gen.subterm2 genTree genTree Alt
+    ]
+  where
+    genTree :: Gen (TrialTree e a)
+    genTree = genTrialTree genE genA

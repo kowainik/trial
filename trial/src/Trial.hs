@@ -93,6 +93,7 @@ import GHC.TypeLits (KnownSymbol, symbolVal)
 import qualified Colourista as C
 import qualified Colourista.Short as C
 import qualified Data.DList as DL
+import qualified Data.List.NonEmpty as NE
 
 
 {- | Severity of the event in history.
@@ -329,8 +330,8 @@ events, where each has 'Fatality' 'Error'.
 
 @since 0.0.0.0
 -}
-fiascos :: [e] -> Trial e a
-fiascos = Fiasco . DL.fromList . map (E,)
+fiascos :: NonEmpty e -> Trial e a
+fiascos = Fiasco . DL.fromList . map (E,) . NE.toList
 {-# INLINE fiascos #-}
 
 {- | Smart constructor for 'Trial'. Returns 'Result' with a single
@@ -402,7 +403,7 @@ eitherToTrial (Left e)  = fiasco e
 
 >>> trialToEither (result "No info" 42)
 Right 42
->>> trialToEither $ fiascos ["Hello, ", "there"]
+>>> trialToEither $ fiascos $ "Hello, " :| ["there"]
 Left "Hello, there"
 
 @since 0.0.0.0
@@ -475,7 +476,7 @@ foo (ResultL [] _) = "Result list is empty"
 foo _ = "Other case"
 :}
 
->>> foo $ fiascos []
+>>> foo empty
 "Fiasco list is empty"
 >>> foo $ pure 42
 "Result list is empty"
