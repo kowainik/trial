@@ -1,15 +1,36 @@
 cabal-version:       2.4
 name:                trial
 version:             0.0.0.0
-synopsis:            Trial Data Type
+synopsis:            Trial Data Structure
 description:
-    @Trial@ data structure is @Either@-like structure that stores tagged
-    history of all events.
+    The @Trial@ Data Structure is a @Either@-like structure that keeps
+    events history inside. The data type allows to keep track of the
+    @Fatality@ level of each such event entry (@Warning@ or @Error@).
     .
     @
     __data__ Trial e a
+    \           │ │
+    \           │ ╰╴Resulting type
+    \           │
+    \           ╰╴An error item type
+    \
+    \    -- | Unsuccessful case
     \    = Fiasco (DList (Fatality, e))
+    \              │      │         │
+    \              │      │         ╰╴One error item
+    \              │      │
+    \              │      ╰╴Level of damage
+    \              │
+    \              ╰╴Efficient list-container for error type items
+    \
+    \    -- | Successful case
     \    | Result (DList e) a
+    \              │     │  │
+    \              │     │  ╰╴Result
+    \              │     │
+    \              │     ╰╴One warning item
+    \              │
+    \              ╰╴Efficient list-container for warning type items
     @
     .
 homepage:            https://github.com/kowainik/trial
@@ -21,7 +42,7 @@ maintainer:          Kowainik <xrom.xkov@gmail.com>
 copyright:           2020 Kowainik
 category:            Data Structure, Data
 build-type:          Simple
-extra-doc-files:     ../README.md
+extra-doc-files:     README.md
                      CHANGELOG.md
 tested-with:         GHC == 8.6.5
                      GHC == 8.8.3

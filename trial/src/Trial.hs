@@ -9,13 +9,16 @@ Copyright: (c) 2020 Kowainik
 SPDX-License-Identifier: MPL-2.0
 Maintainer: Kowainik <xrom.xkov@gmail.com>
 
-'Trial' data structure is 'Either'-like structure that stores tagged
-history of all events. 'Trial' has two constructors:
+The 'Trial' Data Structure is a 'Either'-like structure that keeps
+events history inside. The data type allows to keep track of the
+'Fatality' level of each such event entry ('Warning' or 'Error').
 
-* 'Fiasco': stores the list of tagged events, at least one event has
-  tag 'Error'
+'Trial' has two constructors:
+
+* 'Fiasco': stores the list of events with the explicit 'Fatality'
+  level; at least one event has level 'Error'
 * 'Result': stores the final result and the list of events where each
-  event has tag 'Warning'
+  event has implicit 'Fatality' level 'Warning'
 
 @trial@ implements the composable interface for creating and combining
 values of type 'Trial', so the history of all events is stored
@@ -92,13 +95,23 @@ import qualified Colourista.Short as C
 import qualified Data.DList as DL
 
 
-{- | History event tag. You can't create values of type 'Fatality',
-you can only pattern-match on them. 'Trial' smart constructors and
-instances take care of assigning proper 'Fatality' values.
+{- | Severity of the event in history.
 
-* 'Error': the event appeared in the 'Fiasco' first time
-* 'Warning': the event appeared in the 'Result' first time, or was
-  moved from 'Fiasco' to 'Result'
+* 'Error': fatal error that led to the final 'Fiasco'
+* 'Warning': non-essential error, which didn't affect the result
+
+You can't create values of type 'Fatality', you can only pattern-match
+on them. 'Trial' smart constructors and instances take care of
+assigning proper 'Fatality' values.
+
+Use 'Warning' and 'Error' Pattern Synonyms to pattern match on
+'Fatality':
+
+>>> :{
+showFatality :: Fatality -> String
+showFatality Warning = "Warning"
+showFatality Error   = "Error"
+:}
 
 @since 0.0.0.0
 -}
@@ -128,18 +141,18 @@ withW = fmap (W,)
 {-# INLINE withW #-}
 
 {- | 'Trial' is a data type that stores history of all events happened
-with a value. In addition, each event is tagged with a value of type
-'Fatality' that says whether the event is critical or not.
+with a value. In addition, each event is associated with the
+'Fatality' level that indicates whether the event is fatal or not.
 
 API provided by @trial@ guarantees the following property:
 
 * If the final value is 'Fiasco', it is either an empty list or a list
-  with at least one event of 'Fatality' 'Error'.
+  with at least one event with the 'Fatality' level 'Error'.
 
 @since 0.0.0.0
 -}
 data Trial e a
-    -- | Stores list of tagged events.
+    -- | Stores list of events with the explicit 'Fatality' level.
     = Fiasco (DList (Fatality, e))
     -- | Store list of events and the final result.
     | Result (DList e) a
@@ -423,6 +436,7 @@ unTag :: TaggedTrial tag a -> Trial tag a
 unTag (Fiasco e)          = Fiasco e
 unTag (Result e (tag, a)) = Result (DL.snoc e tag) a
 
+-- TODO: add usage example of the IsLabel instance
 {- | Convenient instance to convert record fields of type
 'TaggedTrial' to 'Trial' by appending field names to the history. This
 instance automatically combines tags and record field names into human
