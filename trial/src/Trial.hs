@@ -705,7 +705,13 @@ See the usage example in the @trial-example@ package:
 * [trial-example-advanced](https://github.com/kowainik/trial/blob/master/trial-example/app-advanced/Main.hs)
 -}
 
--- | The phase of the configurations.
+{- | The phase of the configurations.
+This type is parametrised by the @e@ (error) type of the 'Trial' data type.
+It is a phantom parameter.
+So it could easily be used in the following way: @Phase Text@.
+
+@since 0.0.0.0
+-}
 data Phase (e :: Type)
     = Partial
     | Final
@@ -714,6 +720,8 @@ data Phase (e :: Type)
 {- | Type family to map 'Phase' to the corresponding field for the 'Trial'
 approach. This is a Higher-Kinded Data approach specialised to custom
 enumeration.
+
+@since 0.0.0.0
 -}
 infixl 3 :-
 type family (phase :: Phase (e :: Type)) :- field where
@@ -723,6 +731,8 @@ type family (phase :: Phase (e :: Type)) :- field where
 {- | Type family to map 'Phase' to the corresponding field for the 'TaggedTrial'
 approach. This is a Higher-Kinded Data approach specialised to custom
 enumeration.
+
+@since 0.0.0.0
 -}
 infixl 3 ::-
 type family (phase :: Phase (tag :: Type)) ::- field where
