@@ -1,7 +1,11 @@
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternSynonyms       #-}
+{-# LANGUAGE PolyKinds             #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
 {- |
@@ -74,6 +78,12 @@ module Trial
        , prettyPrintFatality
        , prettyPrintTrial
        , prettyPrintTaggedTrial
+
+         -- * Configuration helpers
+         -- $phase
+       , Phase (..)
+       , (:-)
+       , (::-)
        ) where
 
 import Control.Applicative (Alternative (..), Applicative (..))
@@ -82,6 +92,7 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Bitraversable (Bitraversable (..))
 import Data.DList (DList)
 import Data.Foldable (foldl')
+import Data.Kind (Type)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
 import Data.Semigroup (Semigroup (..))
@@ -651,3 +662,69 @@ prettyPrintTaggedTrial = \case
         <> fromString (show a)
         <> C.i "\nWith the following warnings:\n"
         <> foldr (\e -> (<>) (prettyPrintEntry (W, e))) "" es
+
+----------------------------------------------------------------------------
+-- Configurations
+----------------------------------------------------------------------------
+
+{- $phase
+@trial@ introduced some additional data types and type families for adding __phase__ notion to your data types.
+
+This approach is especially useful when you have a data type with many fields and the goal is to roll up the 'Trial' data type to the one with /pure/ fields.
+
+In this case you can have two options:
+
+1. Use two separate data types:
+
+    @
+    __data__ MyType = MyType
+        { mtField1 :: 'Int'
+        , ...
+
+    __data__ PartialMyType = PartialMyType
+        { pmtField1 :: 'Trial' 'String' 'Int'
+        , ...
+
+    finalise :: PartialMyType -> Maybe MyType
+    @
+
+2. Use 'Phase' notion together with ':-' type family:
+
+    @
+    __data__ MyType (p :: Phase String) = MyType
+        { mtField1 :: p :- 'Int'
+        , ...
+
+    finalise :: MyType \'Partial -> Maybe (MyType \'Final)
+    @
+
+    And this will have the same effect
+
+See the usage example in the @trial-example@ package:
+
+* [trial-example-advanced](https://github.com/kowainik/trial/blob/master/trial-example/app-advanced/Main.hs)
+-}
+
+-- | The phase of the configurations.
+data Phase (e :: Type)
+    = Partial
+    | Final
+    deriving stock (Show, Eq)
+
+{- | Type family to map 'Phase' to the corresponding field for the 'Trial'
+approach. This is a Higher-Kinded Data approach specialised to custom
+enumeration.
+-}
+infixl 3 :-
+type family (phase :: Phase (e :: Type)) :- field where
+    ('Partial :: Phase e) :- field = Trial e field
+    'Final :- field = field
+
+{- | Type family to map 'Phase' to the corresponding field for the 'TaggedTrial'
+approach. This is a Higher-Kinded Data approach specialised to custom
+enumeration.
+-}
+infixl 3 ::-
+type family (phase :: Phase (tag :: Type)) ::- field where
+    ('Partial :: Phase tag) ::- field = TaggedTrial tag field
+    'Final ::- field = field
