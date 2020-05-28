@@ -297,8 +297,7 @@ instance Alternative (Trial e) where
 
     (<|>) :: Trial e a -> Trial e a -> Trial e a
     r@Result{} <|> _ = r
-    f@Fiasco{} <|> r@Result{} = f <> r
-    (Fiasco e1) <|> (Fiasco e2) = Fiasco (e1 <> e2)
+    f@Fiasco{} <|> r = f <> r
     {-# INLINE (<|>) #-}
 
 -- | @since 0.0.0.0
