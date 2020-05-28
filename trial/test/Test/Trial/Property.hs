@@ -6,8 +6,11 @@ import Hedgehog (assert, forAll, (===))
 import Test.Hspec (Spec, describe, it, parallel)
 import Test.Hspec.Hedgehog (hedgehog)
 
-import Test.Trial.Gen (Property, evalTrialTree, genEither, genInt, genSmallList, genTrialTree)
-import Trial (Trial (..), eitherToTrial, fiascoErrors, maybeToTrial, trialToEither, trialToMaybe)
+import Test.Trial.Gen (Property, evalTrialTree, genEither, genInt, genSmallList, genTrial,
+                       genTrialTree)
+import Test.Trial.Laws (checkAssotiativityFor)
+import Trial (Trial (..), alt, eitherToTrial, fiascoErrors, maybeToTrial, trialToEither,
+              trialToMaybe)
 
 import qualified Hedgehog.Gen as Gen
 
@@ -17,6 +20,8 @@ propertySpec = describe "Trial Property Tests" $ parallel $ do
     it "trialToMaybe  . maybeToTrial e ≡ id" trialMaybeProperty
     it "trialToEither . eitherToTrial  ≡ id" trialEitherProperty
     it "Trial invariant: Fiasco has at least one 'Error'" trialInvariantProperty
+    it "'alt' associativity: a `alt` (b `alt` c) ≡ (a `alt` b) `alt` c" $
+        checkAssotiativityFor (genTrial genInt) alt
 
 trialMaybeProperty :: Property
 trialMaybeProperty = hedgehog $ do
