@@ -7,7 +7,9 @@ Trial helper functions for @optparse-applicative@.
 -}
 
 module Trial.OptparseApplicative
-       ( trialOption
+       ( trialParser
+       , taggedTrialParser
+       , trialOption
        , taggedTrialOption
        ) where
 
@@ -15,6 +17,34 @@ import Data.String (IsString (..))
 import Options.Applicative (Parser, ReadM, long, option, optional)
 import Trial (TaggedTrial, Trial, maybeToTrial, withTag)
 
+
+{- | 'Parser' for 'Trial' data structure.
+It uses the provided name for better 'Trial.Warning's and
+'Trial.Error's.
+
+@since 0.0.0.0
+-}
+trialParser
+    :: (Semigroup e, IsString e)
+    => String  -- ^ Name
+    -> Parser a
+    -> Parser (Trial e a)
+trialParser field parser = mToTrial field <$> optional parser
+
+{- | Similar to 'trialParser' but returns 'TaggedTrial' with the tag @CLI@.
+
+'Parser' for 'TaggedTrial' data structure.
+It uses the providedname for better 'Trial.Warning's and
+'Trial.Error's.
+
+@since 0.0.0.0
+-}
+taggedTrialParser
+    :: (Semigroup e, IsString e)
+    => String  -- ^ Option name
+    -> Parser a
+    -> Parser (TaggedTrial e a)
+taggedTrialParser field parser = mToTaggedTrial field <$> optional parser
 
 {- | 'Parser' for 'Trial' data structure.
 It uses the provided option 'long' name for better 'Trial.Warning's and
