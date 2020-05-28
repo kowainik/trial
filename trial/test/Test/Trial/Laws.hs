@@ -1,5 +1,7 @@
 module Test.Trial.Laws
     ( lawsSpec
+      -- * Internals
+    , checkAssotiativityFor
     ) where
 
 import Control.Applicative (Alternative (..), liftA2)

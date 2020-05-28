@@ -115,10 +115,10 @@ Here are the main points:
   events.
 * Think of `Applicative` instance as of low-level combinator of your result on the
   record fields level.
-* `Alternative` instance could help when the results are not combined but chosen
-  instead.
-* `Alternative` returns the first `Result`, combines events only inside
-  `Fiasco`s.
+* `Alternative` instance could help when you want to stop on the first
+  `Result` and get the history of all failures before it.
+* `Alternative`: return first `Result`, also combine all events for
+  all `Trial`s before this `Result`.
 
 ## Tagged `Trial`
 

@@ -32,8 +32,8 @@ features:
 * 'Semigroup': take the last 'Result' and combine all events.
 * 'Applicative': return 'Fiasco', if at least one value if 'Fiasco',
   combine all events.
-* 'Alternative': return first 'Result', combine events only inside
-  'Fiasco's.
+* 'Alternative': return first 'Result', also combine all events for
+  all 'Trial's before this 'Result'.
 -}
 
 module Trial
@@ -50,6 +50,8 @@ module Trial
        , fiasco
        , fiascos
        , result
+         -- * Combinators
+       , alt
 
          -- * Work with Lists
          -- $patternList
@@ -278,8 +280,9 @@ instance Applicative (Trial e) where
     liftA2 f (Result e1 a) (Result e2 b) = Result (e1 <> e2) (f a b)
     {-# INLINE liftA2 #-}
 
-{- | Return the first 'Result'. Otherwise, append two histories in
-both 'Fiasco's.
+{- | Return the first 'Result' with the whole history before
+it. If both are 'Fiasco's, return 'Fiasco's with the histories
+combined.
 
 >>> fiasco "No info" <|> pure 42
 Result (fromList ["No info"]) 42
@@ -287,6 +290,8 @@ Result (fromList ["No info"]) 42
 Result (fromList []) 42
 >>> fiasco "No info" <|> fiasco "Some info"
 Fiasco (fromList [(E,"No info"),(E,"Some info")])
+
+See 'alt' if you want a different behaviour.
 
 @since 0.0.0.0
 -}
@@ -299,6 +304,25 @@ instance Alternative (Trial e) where
     r@Result{} <|> _ = r
     f@Fiasco{} <|> r = f <> r
     {-# INLINE (<|>) #-}
+
+{- | Alternative implementation of the 'Alternative' instance for
+'Trial'. Return the first 'Result'. Otherwise, append two histories in
+both 'Fiasco's. both 'Fiasco's.
+
+>>> fiasco "No info" `alt` pure 42
+Result (fromList []) 42
+>>> pure 42 `alt` result "Something" 10
+Result (fromList []) 42
+>>> fiasco "No info" `alt` fiasco "Some info"
+Fiasco (fromList [(E,"No info"),(E,"Some info")])
+
+@since 0.0.0.0
+-}
+infixl 3 `alt`
+alt :: Trial e a -> Trial e a -> Trial e a
+alt r@Result{} _            = r
+alt _ r@Result{}            = r
+alt (Fiasco e1) (Fiasco e2) = Fiasco (e1 <> e2)
 
 -- | @since 0.0.0.0
 instance Bifunctor Trial where
