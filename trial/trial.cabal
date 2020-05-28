@@ -109,6 +109,7 @@ test-suite trial-test
                      , hedgehog ^>= 1.0
                      , hspec ^>= 2.7
                      , hspec-hedgehog ^>= 0.0.1.1
+                     , splitmix < 0.0.5
 
   ghc-options:         -threaded
                        -rtsopts
