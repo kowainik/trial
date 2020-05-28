@@ -535,6 +535,8 @@ pattern ResultL :: [e] -> a -> Trial e a
 pattern ResultL e a <- Result (DL.toList -> e) a
 
 {-# COMPLETE FiascoL, ResultL #-}
+{-# COMPLETE Result,  FiascoL #-}
+{-# COMPLETE ResultL, Fiasco  #-}
 
 {- | Get the list of 'Warning's and 'Error's together with the 'Maybe'
 'Result' if applicable.
