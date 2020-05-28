@@ -282,7 +282,7 @@ instance Applicative (Trial e) where
 both 'Fiasco's.
 
 >>> fiasco "No info" <|> pure 42
-Result (fromList []) 42
+Result (fromList ["No info"]) 42
 >>> pure 42 <|> result "Something" 10
 Result (fromList []) 42
 >>> fiasco "No info" <|> fiasco "Some info"
@@ -297,7 +297,7 @@ instance Alternative (Trial e) where
 
     (<|>) :: Trial e a -> Trial e a -> Trial e a
     r@Result{} <|> _ = r
-    _ <|> r@Result{} = r
+    f@Fiasco{} <|> r@Result{} = f <> r
     (Fiasco e1) <|> (Fiasco e2) = Fiasco (e1 <> e2)
     {-# INLINE (<|>) #-}
 
