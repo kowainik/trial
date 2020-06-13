@@ -77,9 +77,11 @@ module Trial
        , unTag
 
          -- * Pretty printing
-       , prettyPrintFatality
-       , prettyPrintTrial
-       , prettyPrintTaggedTrial
+       , prettyFatality
+       , prettyTrial
+       , prettyTrialWith
+       , prettyTaggedTrial
+       , prettyTaggedTrialWith
 
          -- * Configuration helpers
          -- $phase
@@ -636,17 +638,17 @@ dlistToList = DL.toList
 * 'Warning' in yellow
 * 'Error' in red
 
-See 'prettyPrintTrial' for examples.
+See 'prettyTrial' for examples.
 
 @since 0.0.0.0
 -}
-prettyPrintFatality :: (Semigroup str, IsString str) => Fatality -> str
-prettyPrintFatality = \case
+prettyFatality :: (Semigroup str, IsString str) => Fatality -> str
+prettyFatality = \case
     E -> C.formatWith [C.red]    "Error  "
     W -> C.formatWith [C.yellow] "Warning"
 
-prettyPrintEntry :: (Semigroup e, IsString e) => (Fatality, e) -> e
-prettyPrintEntry (f, e) = "  * [" <> prettyPrintFatality f <> "] " <> e <> "\n"
+prettyEntry :: (Semigroup e, IsString e) => (Fatality, e) -> e
+prettyEntry (f, e) = "  * [" <> prettyFatality f <> "] " <> e <> "\n"
 
 {- | Colourful pretty-printing of 'Trial'.
 
@@ -656,37 +658,61 @@ prettyPrintEntry (f, e) = "  * [" <> prettyPrintFatality f <> "] " <> e <> "\n"
 
 @since 0.0.0.0
 -}
-prettyPrintTrial
+prettyTrial
     :: (Show a, Semigroup e, IsString e)
     => Trial e a
     -> e
-prettyPrintTrial = \case
+prettyTrial = prettyTrialWith show
+
+{- | Similar to 'prettyTrial', but accepts a function to show Result in the
+provided way.
+
+@since 0.0.0.0
+-}
+prettyTrialWith
+    :: (Semigroup e, IsString e)
+    => (a -> String)
+    -> Trial e a
+    -> e
+prettyTrialWith showRes = \case
     Fiasco es -> C.formatWith [C.red, C.bold] "Fiasco:\n"
-        <> foldr (\e -> (<>) (prettyPrintEntry e)) "" es
-    Result es a -> C.formatWith [C.green, C.bold] "Result:\n  "
-        <> fromString (show a)
+        <> foldr (\e -> (<>) (prettyEntry e)) "" es
+    Result es a -> C.formatWith [C.green, C.bold] "Result:\n"
+        <> fromString (unlines $ map ("  " <>) $ lines $ showRes a)
         <> C.i "\nWith the following warnings:\n"
-        <> foldr (\e -> (<>) (prettyPrintEntry (W, e))) "" es
+        <> foldr (\e -> (<>) (prettyEntry (W, e))) "" es
 
 {- | Colourful pretty-printing of 'TaggedTrial'. Similar to
-'prettyPrintTrial', but also prints the resulting @tag@ for 'Result'.
+'prettyTrial', but also prints the resulting @tag@ for 'Result'.
 
 ![Tag](https://user-images.githubusercontent.com/8126674/82759188-93bd1180-9de3-11ea-8a76-337d73cf6cc0.png)
 
 @since 0.0.0.0
 -}
-prettyPrintTaggedTrial
+prettyTaggedTrial
     :: (Show a, Semigroup e, IsString e)
     => TaggedTrial e a
     -> e
-prettyPrintTaggedTrial = \case
+prettyTaggedTrial = prettyTaggedTrialWith show
+
+{- | Similar to 'prettyTaggedTrial', but accepts a function to show the 'Result'
+in the provided way.
+
+@since 0.0.0.0
+--}
+prettyTaggedTrialWith
+    :: (Semigroup e, IsString e)
+    => (a -> String)
+    -> TaggedTrial e a
+    -> e
+prettyTaggedTrialWith showRes = \case
     Fiasco es -> C.formatWith [C.red, C.bold] "Fiasco:\n"
-        <> foldr (\e -> (<>) (prettyPrintEntry e)) "" es
+        <> foldr (\e -> (<>) (prettyEntry e)) "" es
     Result es (tag, a) -> C.formatWith [C.green, C.bold] "Result:\n"
         <> C.formatWith [C.blue] ("  [" <> tag <> "]\n    ")
-        <> fromString (show a)
+        <> fromString (unlines $ map ("  " <>) $ lines $ showRes a)
         <> C.i "\nWith the following warnings:\n"
-        <> foldr (\e -> (<>) (prettyPrintEntry (W, e))) "" es
+        <> foldr (\e -> (<>) (prettyEntry (W, e))) "" es
 
 ----------------------------------------------------------------------------
 -- Configurations
