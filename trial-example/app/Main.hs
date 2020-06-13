@@ -8,7 +8,7 @@ import Data.Text (Text)
 import Options.Applicative (Parser, auto, execParser, info, str)
 import Toml (TomlCodec, (.=))
 
-import Trial (TaggedTrial, Trial (..), fiasco, prettyPrintTrial, withTag)
+import Trial (TaggedTrial, Trial (..), fiasco, prettyTrial, withTag)
 import Trial.OptparseApplicative (taggedTrialOption)
 import Trial.Tomland (taggedTrialMaybeCodec, taggedTrialStrCodec)
 
@@ -17,7 +17,7 @@ import qualified Toml
 
 
 main :: IO ()
-main = parseOptions >>= TIO.putStrLn . prettyPrintTrial
+main = parseOptions >>= TIO.putStrLn . prettyTrial
 
 {-
 https://medium.com/@jonathangfischoff/the-partial-options-monoid-pattern-31914a71fc67
