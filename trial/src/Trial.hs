@@ -75,6 +75,7 @@ module Trial
          -- * Tag
        , withTag
        , unTag
+       , fiascoOnEmpty
 
          -- * Pretty printing
        , prettyFatality
@@ -472,6 +473,35 @@ Fiasco (fromList [(E,"No random")])
 unTag :: TaggedTrial tag a -> Trial tag a
 unTag (Fiasco e)          = Fiasco e
 unTag (Result e (tag, a)) = Result (DL.snoc e tag) a
+
+{- | Tag a value with a given tag, and add a message to events using
+tag and a name if the given 'Foldable' is 'null'.
+
+When used like this:
+
+@
+fiascoOnEmpty \"CLI\" "port" someList
+@
+
+it's equivalent to the following:
+
+@
+'withTag' \"CLI\" $ __case__ someList __of__
+    [] -> 'fiasco' "No CLI option specified for: port"
+    xs -> pure xs
+@
+
+@since 0.0.0.0
+-}
+fiascoOnEmpty
+    :: (IsString tag, Semigroup tag, Foldable f)
+    => tag  -- ^ Tag
+    -> tag  -- ^ Field name
+    -> f a  -- ^ Container of elements
+    -> TaggedTrial tag (f a)
+fiascoOnEmpty tag name f
+    | null f = fiasco $ "No " <> tag <> " option specified for: " <> name
+    | otherwise = withTag tag (pure f)
 
 -- TODO: add usage example of the IsLabel instance
 {- | Convenient instance to convert record fields of type
