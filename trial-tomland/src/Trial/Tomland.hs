@@ -1,3 +1,5 @@
+{-# LANGUAGE ApplicativeDo #-}
+
 {- |
 Copyright: (c) 2020 Kowainik
 SPDX-License-Identifier: MPL-2.0
@@ -13,6 +15,7 @@ module Trial.Tomland
     , taggedTrialCodec
     , taggedTrialStrCodec
     , taggedTrialMaybeCodec
+    , taggedTrialListCodec
     ) where
 
 import Control.Monad (join)
@@ -108,3 +111,26 @@ taggedTrialMaybeCodec =
   where
     taggedTrialToMaybe :: TaggedTrial e (Maybe a) -> Maybe a
     taggedTrialToMaybe = join . fmap snd . trialToMaybe
+
+{- | 'TomlCodec' that decodes with 'Toml.list' and adds 'fiasco' to
+the result if the resulting list is empty. It's helpful to handle the
+case when the list is not specified at all.
+
+@since 0.0.0.0
+-}
+taggedTrialListCodec
+    :: forall e a
+    .  (IsString e, Semigroup e)
+    => Key
+    -> TomlCodec a
+    -> TomlCodec (TaggedTrial e [a])
+taggedTrialListCodec key aCodec = do
+    res <- taggedTrialStrCodec (Toml.list aCodec) key
+    pure $ case res of
+        Result _ (_, []) ->
+            res <> fiasco ("No TOML value is specified for key: " <> keyToStr key)
+        Result _ _ -> res
+        Fiasco _ -> res
+  where
+    keyToStr :: Key -> e
+    keyToStr = fromString . Text.unpack . Toml.prettyKey
