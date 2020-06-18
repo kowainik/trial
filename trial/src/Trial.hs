@@ -52,6 +52,12 @@ module Trial
        , result
          -- * Combinators
        , alt
+       , isFiasco
+       , isResult
+       , whenResult
+       , whenResult_
+       , whenFiasco
+       , whenFiasco_
 
          -- * Work with Lists
          -- $patternList
@@ -380,6 +386,96 @@ __Hint:__ Use 'pure' to create a 'Result' with an empty list of events.
 result :: e -> a -> Trial e a
 result e = Result $ DL.singleton e
 {-# INLINE result #-}
+
+{- | Predicate on if the given 'Trial' is 'Fiasco'.
+
+>>> isFiasco (fiasco 'e')
+True
+>>> isFiasco (result 'a' 42)
+False
+
+@since 0.0.0.0
+-}
+isFiasco :: Trial e a -> Bool
+isFiasco (Fiasco _) = True
+isFiasco _          = False
+
+{- | Predicate on if the given 'Trial' is 'Result'.
+
+>>> isResult (result 'a' 42)
+True
+>>> isResult (fiasco 'e')
+False
+
+@since 0.0.0.0
+-}
+isResult :: Trial e a -> Bool
+isResult (Result _ _) = True
+isResult _            = False
+
+{- | Applies the given action to 'Trial' if it is 'Result' and returns the
+value. In case of 'Fiasco' the default value is returned.
+
+>>> whenResult "bar" (fiasco "foo") (\es a -> "success!" <$ (print a >> print es))
+"bar"
+
+>>> whenResult "bar" (result "res" 42) (\es a -> "success!" <$ (print a >> print es))
+42
+["res"]
+"success!"
+
+@since 0.0.0.0
+-}
+whenResult :: Applicative f => x -> Trial e a -> ([e] -> a -> f x) -> f x
+whenResult x (FiascoL _) _    = pure x
+whenResult _ (ResultL es a) f = f es a
+{-# INLINE whenResult #-}
+
+{- | Applies given action to the 'Trial' content if it is 'Result'.
+
+Similar to 'whenResult' but the default value is @()@.
+
+>>> whenResult_ (fiasco "foo") (\es a -> print a >> print es)
+>>> whenResult_ (result "res" 42)  (\es a -> print a >> print es)
+42
+["res"]
+
+@since 0.0.0.0
+-}
+whenResult_ :: Applicative f => Trial e a -> ([e] -> a -> f ()) -> f ()
+whenResult_ = whenResult ()
+{-# INLINE whenResult_ #-}
+
+{- | Applies the given action to 'Trial' if it is 'Fiasco' and returns the
+result. In case of 'Result' the default value is returned.
+
+>>> whenFiasco "bar" (fiasco 42) (\es -> "foo" <$ print es)
+[(E,42)]
+"foo"
+
+>>> whenFiasco "bar" (result "res" 42) (\es -> "foo" <$ print es)
+"bar"
+
+@since 0.0.0.0
+-}
+whenFiasco :: Applicative f => x -> Trial e a -> ([(Fatality, e)] -> f x) -> f x
+whenFiasco _ (FiascoL e) f   = f e
+whenFiasco a (ResultL _ _) _ = pure a
+{-# INLINE whenFiasco #-}
+
+{- | Applies given action to the 'Trial' content if it is 'Fiasco'.
+
+Similar to 'whenFiasco' but the default value is @()@.
+
+>>> whenFiasco_ (result "res" 42) print
+>>> whenFiasco_ (fiasco "foo") print
+[(E,"foo")]
+
+@since 0.0.0.0
+-}
+whenFiasco_ :: Applicative f => Trial e a -> ([(Fatality, e)] -> f ()) -> f ()
+whenFiasco_ = whenFiasco ()
+{-# INLINE whenFiasco_ #-}
 
 {- | Convert 'Maybe' to 'Trial' but assigning 'Error' 'Fatality' when
 the value is 'Nothing'.
