@@ -307,6 +307,23 @@ instance Alternative (Trial e) where
     f@Fiasco{} <|> r = f <> r
     {-# INLINE (<|>) #-}
 
+
+{- |
+
+@since 0.0.0.0
+-}
+instance Monad (Trial e) where
+    return :: a -> Trial e a
+    return = pure
+    {-# INLINE return #-}
+
+    (>>=) :: Trial e a -> (a -> Trial e b) -> Trial e b
+    Fiasco e >>= _ = Fiasco e
+    Result wa a >>= f = case f a of
+        Fiasco e    -> Fiasco (withW wa <> e)
+        Result wb b -> Result (wa <> wb) b
+    {-# INLINE (>>=) #-}
+
 {- | Alternative implementation of the 'Alternative' instance for
 'Trial'. Return the first 'Result'. Otherwise, append two histories in
 both 'Fiasco's. both 'Fiasco's.

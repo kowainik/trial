@@ -11,8 +11,8 @@ import Hedgehog (Gen, forAll, forAllWith, (===))
 import Test.Hspec (Spec, describe, it, parallel)
 import Test.Hspec.Hedgehog (hedgehog)
 
-import Test.Trial.Gen (Property, genFunction, genFunction2, genInt, genSmallInt, genSmallList,
-                       genTrial)
+import Test.Trial.Gen (Property, genBindFunction, genFunction, genFunction2, genInt, genSmallInt,
+                       genSmallList, genTrial)
 import Trial (Trial)
 
 
@@ -54,6 +54,13 @@ lawsSpec = describe "Trial Instance Laws" $ parallel $ do
             alternativeAssociativity
         it "Right Identity: x <|> empty ≡ x" alternativeRightIdentity
         it "Left Identity:  empty <|> x ≡ x" alternativeLeftIdentity
+    describe "Monad instance for Trial" $ do
+        it "Left Identity: return a >>= k ≡ k a" monadLeftIdentity
+        it "Right Identity: m >>= return ≡ m" monadRightIdentity
+        it "Associativity: m >>= (\\x -> k x >>= h) ≡ (m >>= k) >>= h"
+            monadAssociativity
+        it "Monad and Applicative: m1 <*> m2 ≡ m1 >>= (x1 -> m2 >>= (x2 -> return (x1 x2)))"
+            monadApplicative
 
 ----------------------------------------------------------------------------
 -- Semigroup instance properties
@@ -175,6 +182,34 @@ alternativeLeftIdentity :: Property
 alternativeLeftIdentity = hedgehog $ do
     x <- forAll $ genTrial genInt
     (empty <|> x) === x
+
+----------------------------------------------------------------------------
+-- Monad instance properties
+----------------------------------------------------------------------------
+
+monadLeftIdentity :: Property
+monadLeftIdentity = hedgehog $ do
+    a <- forAll genInt
+    k <- forAllWith (const "k") genBindFunction
+    (return a >>= k) === k a
+
+monadRightIdentity :: Property
+monadRightIdentity = hedgehog $ do
+    x <- forAll $ genTrial genInt
+    (x >>= return) === x
+
+monadAssociativity :: Property
+monadAssociativity = hedgehog $ do
+    m <- forAll $ genTrial genInt
+    k <- forAllWith (const "k") genBindFunction
+    h <- forAllWith (const "h") genBindFunction
+    (m >>= (\x -> k x >>= h)) === ((m >>= k) >>= h)
+
+monadApplicative :: Property
+monadApplicative = hedgehog $ do
+    mf <- forAllWith (const "mf") $ genTrial genFunction
+    t <- forAll $ genTrial genInt
+    (mf <*> t) === (mf >>= (\f -> t >>= (\a -> return (f a))))
 
 ----------------------------------------------------------------------------
 -- Property helpers

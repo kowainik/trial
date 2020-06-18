@@ -3,6 +3,7 @@ module Test.Trial.Gen
     , genEither
     , genFunction
     , genFunction2
+    , genBindFunction
     , genInt
     , genSmallInt
     , genSmallList
@@ -77,6 +78,16 @@ genFunction2 = Gen.element
     , subtract
     ]
 
+genBindFunction :: Gen (Int -> Trial Int Int)
+genBindFunction = genTrial genInt >>= \t -> Gen.element
+    [ return
+    , result 0
+    , fiasco
+    , const t
+    , \n -> if even n then result 0 n else fiasco 1
+    , \n -> t <> if even n then result 0 n else fiasco 1
+    ]
+
 -- | Generate 'Either' with more frequent 'Right's.
 genEither :: Gen e -> Gen a -> Gen (Either e a)
 genEither genE genA = Gen.sized $ \n -> Gen.frequency
@@ -96,6 +107,7 @@ data TrialTree e a
     | Append (TrialTree e a) (TrialTree e a)  -- ^ @(<>)@ from Semigroup
     | SeqR (TrialTree e a) (TrialTree e a)  -- ^ @(*>)@ from Applicative
     | Alt (TrialTree e a) (TrialTree e a)  -- ^ @(<|>)@ from Alternative
+    | Then (TrialTree e a) (TrialTree e a)
     deriving stock (Show, Eq)
 
 evalTrialTree :: TrialTree e a -> Trial e a
@@ -108,6 +120,7 @@ evalTrialTree = \case
     Append l r -> evalTrialTree l <> evalTrialTree r
     SeqR l r -> evalTrialTree l *> evalTrialTree r
     Alt l r -> evalTrialTree l <|> evalTrialTree r
+    Then l r -> evalTrialTree l >>= \_ -> evalTrialTree r
 
 genTrialTree :: forall e a . Gen e -> Gen a -> Gen (TrialTree e a)
 genTrialTree genE genA = Gen.recursive
@@ -123,6 +136,7 @@ genTrialTree genE genA = Gen.recursive
     [ Gen.subterm2 genTree genTree Append
     , Gen.subterm2 genTree genTree SeqR
     , Gen.subterm2 genTree genTree Alt
+    , Gen.subterm2 genTree genTree Then
     ]
   where
     genTree :: Gen (TrialTree e a)
