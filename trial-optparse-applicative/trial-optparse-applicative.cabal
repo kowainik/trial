@@ -1,9 +1,9 @@
 cabal-version:       2.4
 name:                trial-optparse-applicative
 version:             0.0.0.0
-synopsis:            Trial helper functions for @optparse-applicative@
-description:         @Trial@ data structure related helper functions for
-                     [optparse-applicative](https://hackage.haskell.org/package/optparse-applicative).
+synopsis:            Trial helper functions for optparse-applicative
+description:         @Trial@ data structure related helper functions
+                     for [optparse-applicative](https://hackage.haskell.org/package/optparse-applicative).
 homepage:            https://github.com/kowainik/trial
 bug-reports:         https://github.com/kowainik/trial/issues
 license:             MPL-2.0

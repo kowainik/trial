@@ -2,7 +2,8 @@ cabal-version:       2.4
 name:                trial-tomland
 version:             0.0.0.0
 synopsis:            Trial helper functions for tomland
-description:         Trial helper functions for tomland
+description:         @Trial@ data structure related helper functions
+                     for [tomland](https://hackage.haskell.org/package/tomland).
 homepage:            https://github.com/kowainik/trial
 bug-reports:         https://github.com/kowainik/trial/issues
 license:             MPL-2.0
