@@ -91,7 +91,7 @@ common common-options
 library
   import:              common-options
   hs-source-dirs:      src
-  build-depends:       colourista ^>= 0.1.0.0
+  build-depends:       colourista >= 0.1 && < 0.3
                      , dlist ^>= 0.8.0.8
   exposed-modules:     Trial
 
