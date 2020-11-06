@@ -158,8 +158,8 @@ configuration and the default options provided in the source code.
 
 | Executable | Description |
 |------------|-------------|
-| [`trial-example`](https://github.com/kowainik/trial/blob/master/trial-example/app/Main.hs) | The basic example of config problem with the usage of `TaggedTrial` |
-| [`trial-example-advanced`](https://github.com/kowainik/trial/blob/master/trial-example/app-advanced/Main.hs) | The basic example of config problem with the usage of `TaggedTrial` with the `Phase` based approach. |
+| [`trial-example`](https://github.com/kowainik/trial/blob/main/trial-example/app/Main.hs) | The basic example of config problem with the usage of `TaggedTrial` |
+| [`trial-example-advanced`](https://github.com/kowainik/trial/blob/main/trial-example/app-advanced/Main.hs) | The basic example of config problem with the usage of `TaggedTrial` with the `Phase` based approach. |
 
 To run it you can use the following command:
 

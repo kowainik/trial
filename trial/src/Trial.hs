@@ -879,7 +879,7 @@ In this case you can have two options:
 
 See the usage example in the @trial-example@ package:
 
-* [trial-example-advanced](https://github.com/kowainik/trial/blob/master/trial-example/app-advanced/Main.hs)
+* [trial-example-advanced](https://github.com/kowainik/trial/blob/main/trial-example/app-advanced/Main.hs)
 -}
 
 {- | The phase of the configurations.
