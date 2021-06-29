@@ -40,7 +40,7 @@ license-file:        LICENSE
 author:              Veronika Romashkina, Dmitrii Kovanikov
 maintainer:          Kowainik <xrom.xkov@gmail.com>
 copyright:           2020 Kowainik
-category:            Data Structure, Data
+category:            Data Structures, Data
 build-type:          Simple
 extra-doc-files:     README.md
                      CHANGELOG.md
