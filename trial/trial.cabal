@@ -1,6 +1,6 @@
 cabal-version:       2.4
 name:                trial
-version:             0.0.0.0
+version:             0.0.0.1
 synopsis:            Trial Data Structure
 description:
     The @Trial@ Data Structure is a @Either@-like structure that keeps
@@ -53,7 +53,7 @@ source-repository head
   location:            https://github.com/kowainik/trial.git
 
 common common-options
-  build-depends:       base >= 4.12.0.0 && < 4.15
+  build-depends:       base >= 4.12.0.0 && < 4.16
 
   ghc-options:         -Wall
                        -Wcompat
@@ -92,7 +92,7 @@ library
   import:              common-options
   hs-source-dirs:      src
   build-depends:       colourista >= 0.1 && < 0.3
-                     , dlist ^>= 0.8.0.8
+                     , dlist ^>= 1.0
   exposed-modules:     Trial
 
 test-suite trial-test
@@ -105,11 +105,10 @@ test-suite trial-test
                        Test.Trial.Property
 
   build-depends:       trial
-                     , dlist
+                     , dlist ^>= 1.0
                      , hedgehog ^>= 1.0
                      , hspec ^>= 2.7
                      , hspec-hedgehog ^>= 0.0.1.1
-                     , splitmix < 0.0.5
 
   ghc-options:         -threaded
                        -rtsopts
@@ -120,5 +119,5 @@ test-suite trial-doctest
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Doctest.hs
-  build-depends:       doctest ^>= 0.16
+  build-depends:       doctest ^>= 0.19
   ghc-options:         -threaded
