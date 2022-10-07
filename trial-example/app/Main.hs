@@ -66,7 +66,7 @@ partialOptionsParser =  PartialOptions
 
 partialOptionsCodec :: TomlCodec PartialOptions
 partialOptionsCodec = PartialOptions
-    <$> taggedTrialStrCodec Toml.int "retry-count".= poRetryCount
+    <$> taggedTrialStrCodec Toml.int "retry-count" .= poRetryCount
     <*> taggedTrialStrCodec Toml.text "host" .= poHost
     <*> taggedTrialMaybeCodec (Toml.bool "character-code") .= poCharacterCode
 
