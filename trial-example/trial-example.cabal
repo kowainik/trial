@@ -1,6 +1,6 @@
 cabal-version:       2.4
 name:                trial-example
-version:             0.0.0.0
+version:             0.0.0.1
 synopsis:            Example project to show how Trial could be used
 description:         Example project to show how Trial could be used
 homepage:            https://github.com/kowainik/trial
@@ -9,14 +9,16 @@ license:             MPL-2.0
 license-file:        LICENSE
 author:              Kowainik
 maintainer:          Kowainik <xrom.xkov@gmail.com>
-copyright:           2020 Kowainik
+copyright:           2020-2022 Kowainik
 category:            Example
 build-type:          Simple
 extra-doc-files:     README.md
                      CHANGELOG.md
 tested-with:         GHC == 8.6.5
                      GHC == 8.8.3
-                     GHC == 8.10.1
+                     GHC == 8.10.7
+                     GHC == 9.0.2
+                     GHC == 9.2.4
 
 source-repository head
   type:                git
@@ -24,11 +26,11 @@ source-repository head
 
 
 common common-options
-  build-depends:       base >= 4.12.0.0 && < 4.15
+  build-depends:       base >= 4.12.0.0 && < 4.17
                      , trial
                      , trial-optparse-applicative
                      , trial-tomland
-                     , optparse-applicative ^>= 0.15
+                     , optparse-applicative >= 0.15 && < 0.18
                      , text
                      , tomland ^>= 1.3.0.0
 
@@ -48,6 +50,12 @@ common common-options
     ghc-options:       -Wmissing-deriving-strategies
   if impl(ghc >= 8.10)
     ghc-options:       -Wunused-packages
+  if impl(ghc >= 9.0)
+    ghc-options:       -Winvalid-haddock
+  if impl(ghc >= 9.2)
+    ghc-options:       -Woperator-whitespace
+                       -Wredundant-bang-patterns
+
   -- execs
   ghc-options:         -threaded
                        -rtsopts
