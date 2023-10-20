@@ -18,7 +18,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cabal: ["3.8"]
+        # We must always use the latest version of cabal because
+        # otherwise ghc-paths, which is a dependency of doctest,
+        # can't be configured.
+        cabal: ["3.10"]
         ghc:
           - "8.6.5"
           - "8.8.3"
@@ -27,6 +30,7 @@ jobs:
           - "9.2.4"
           - "9.4.7"
           - "9.6.3"
+          - "9.8.1"
 
     steps:
     - uses: actions/checkout@v4
