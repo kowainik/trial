@@ -126,5 +126,5 @@ test-suite trial-doctest
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Doctest.hs
-  build-depends:       doctest >= 0.16 && < 0.21
+  build-depends:       doctest >= 0.16 && < 0.23
   ghc-options:         -threaded
