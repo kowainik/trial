@@ -90,6 +90,13 @@ module Trial
        , prettyTaggedTrial
        , prettyTaggedTrialWith
 
+         -- * Pretty printing without colour
+       , prettyFatalityNoColour
+       , prettyTrialNoColour
+       , prettyTrialWithNoColour
+       , prettyTaggedTrialNoColour
+       , prettyTaggedTrialWithNoColour
+
          -- * Configuration helpers
          -- $phase
        , Phase (..)
@@ -839,6 +846,71 @@ prettyTaggedTrialWith showRes = \case
         <> fromString (unlines $ map ("  " <>) $ lines $ showRes a)
         <> C.i "\nWith the following warnings:\n"
         <> foldr (\e -> (<>) (prettyEntry (W, e))) "" es
+
+{- | Print aligned 'Fatality'.
+
+-}
+prettyFatalityNoColour :: (Semigroup str, IsString str) => Fatality -> str
+prettyFatalityNoColour = \case
+    E -> "Error  "
+    W -> "Warning"
+
+prettyEntryNoColour :: (Semigroup e, IsString e) => (Fatality, e) -> e
+prettyEntryNoColour (f, e) = "  * [" <> prettyFatalityNoColour f <> "] " <> e <> "\n"
+
+{- | Pretty-printing of 'Trial'.
+
+-}
+prettyTrialNoColour
+    :: (Show a, Semigroup e, IsString e)
+    => Trial e a
+    -> e
+prettyTrialNoColour = prettyTrialWithNoColour show
+
+{- | Similar to 'prettyTrialNoColour', but accepts a function to show Result in the
+provided way.
+
+-}
+prettyTrialWithNoColour
+    :: (Semigroup e, IsString e)
+    => (a -> String)
+    -> Trial e a
+    -> e
+prettyTrialWithNoColour showRes = \case
+    Fiasco es -> "Fiasco:\n"
+        <> foldr (\e -> (<>) (prettyEntryNoColour e)) "" es
+    Result es a -> "Result:\n"
+        <> fromString (unlines $ map ("  " <>) $ lines $ showRes a)
+        <> "\nWith the following warnings:\n"
+        <> foldr (\e -> (<>) (prettyEntryNoColour (W, e))) "" es
+
+{- | Pretty-printing of 'TaggedTrial'. Similar to
+'prettyTrialNoColour', but also prints the resulting @tag@ for 'Result'.
+
+-}
+prettyTaggedTrialNoColour
+    :: (Show a, Semigroup e, IsString e)
+    => TaggedTrial e a
+    -> e
+prettyTaggedTrialNoColour = prettyTaggedTrialWithNoColour show
+
+{- | Similar to 'prettyTaggedTrialNoColour', but accepts a function to show the 'Result'
+in the provided way.
+
+--}
+prettyTaggedTrialWithNoColour
+    :: (Semigroup e, IsString e)
+    => (a -> String)
+    -> TaggedTrial e a
+    -> e
+prettyTaggedTrialWithNoColour showRes = \case
+    Fiasco es -> "Fiasco:\n"
+        <> foldr (\e -> (<>) (prettyEntryNoColour e)) "" es
+    Result es (tag, a) -> "Result:\n"
+        <> ("  [" <> tag <> "]\n    ")
+        <> fromString (unlines $ map ("  " <>) $ lines $ showRes a)
+        <> "\nWith the following warnings:\n"
+        <> foldr (\e -> (<>) (prettyEntryNoColour (W, e))) "" es
 
 ----------------------------------------------------------------------------
 -- Configurations
