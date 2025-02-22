@@ -26,7 +26,7 @@ source-repository head
   location:            https://github.com/kowainik/trial.git
 
 common common-options
-  build-depends:       base >= 4.12.0.0 && < 4.21
+  build-depends:       base >= 4.12.0.0 && < 4.22
 
   ghc-options:         -Wall
                        -Wcompat
@@ -70,5 +70,5 @@ library
   import:              common-options
   hs-source-dirs:      src
   build-depends:       trial
-                     , optparse-applicative >= 0.15 && < 0.18
+                     , optparse-applicative >= 0.15 && < 0.19
   exposed-modules:     Trial.OptparseApplicative
