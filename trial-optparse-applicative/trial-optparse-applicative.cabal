@@ -70,5 +70,5 @@ library
   import:              common-options
   hs-source-dirs:      src
   build-depends:       trial
-                     , optparse-applicative >= 0.15 && < 0.19
+                     , optparse-applicative >= 0.15 && < 0.20
   exposed-modules:     Trial.OptparseApplicative
