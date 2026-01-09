@@ -26,7 +26,7 @@ source-repository head
 
 
 common common-options
-  build-depends:       base >= 4.12.0.0 && < 4.22
+  build-depends:       base >= 4.12.0.0 && < 4.23
                      , trial
                      , trial-optparse-applicative
                      , trial-tomland
