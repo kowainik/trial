@@ -3,3 +3,5 @@ packages:
     trial-example
     trial-optparse-applicative
     trial-tomland
+
+allow-newer: boring:base
